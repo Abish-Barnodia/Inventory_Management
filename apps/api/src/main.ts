@@ -18,11 +18,10 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow any origin to bypass CORS issues with dynamic Vercel URLs
-    callback(null, true);
-  },
-  credentials: true
+  origin: [
+    "https://resto-maneger-smd1.vercel.app"
+  ],
+  credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
