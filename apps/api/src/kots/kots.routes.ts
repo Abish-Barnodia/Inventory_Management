@@ -121,6 +121,30 @@ kotsRouter.post('/section-kots/:sectionKotId/status', async (req, res) => {
 
     if (parentStatus) {
       await client.query(`UPDATE kots SET status = $1 WHERE kot_id = $2`, [parentStatus, skot.parent_kot_id]);
+
+      // When all section KOTs are completed, also update the order status
+      if (parentStatus === 'completed') {
+        // Get the order_id from the parent KOT
+        const kotRow = await client.query(
+          `SELECT order_id FROM kots WHERE kot_id = $1`,
+          [skot.parent_kot_id]
+        );
+        if (kotRow.rows.length > 0) {
+          const orderId = kotRow.rows[0].order_id;
+          // Check if ALL KOTs for this order are completed
+          const allKotsForOrder = await client.query(
+            `SELECT status FROM kots WHERE order_id = $1`,
+            [orderId]
+          );
+          const allCompleted = allKotsForOrder.rows.every((r: any) => r.status === 'completed');
+          if (allCompleted) {
+            await client.query(
+              `UPDATE orders SET status = 'completed' WHERE order_id = $1`,
+              [orderId]
+            );
+          }
+        }
+      }
     }
 
     await client.query('COMMIT');
