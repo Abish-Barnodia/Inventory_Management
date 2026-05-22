@@ -159,7 +159,7 @@ function KotCard({ kot, selected, onClick }: { kot: SectionKOT; selected: boolea
             <CreditCard size={8} /> Customer Has Paid
           </div>
         )}
-        
+
         <div className="mt-1.5 space-y-0.5 max-h-[80px] overflow-hidden">
           {kot.items.slice(0, 3).map((item, i) => (
             <div key={i} className="flex justify-between text-[10px] text-gray-600">
@@ -195,25 +195,25 @@ function KOTPageInner() {
   const fetchSections = useCallback(async (silent = false) => {
     try {
       const res = await apiClient.get('/kots/sections/list');
-      
+
       if (!res.data || res.data.length === 0) {
         throw new Error('Empty sections');
       }
-      
+
       setSections(res.data);
       // ✅ Clear loading on success path too
       if (!silent) setLoading(false);
-    } catch (e) { 
-      console.error('sections/list failed, falling back to /categories:', e); 
+    } catch (e) {
+      console.error('sections/list failed, falling back to /categories:', e);
       // If the backend sections table is empty or throwing an error, fallback to fetching categories 
       try {
         const catRes = await apiClient.get('/categories');
         const categoriesAsSections = catRes.data.map((c: any) => ({
-          section_id: c.name, 
+          section_id: c.name,
           section_name: c.name,
           pending_count: '0'
         }));
-        
+
         setSections(categoriesAsSections);
       } catch (fallbackError) {
         console.error('Fallback also failed:', fallbackError);
@@ -248,14 +248,14 @@ function KOTPageInner() {
     fetchSections();
   }, [fetchSections]);
 
-  useEffect(() => { 
-    fetchSections(); 
-    
+  useEffect(() => {
+    fetchSections();
+
     // Auto-refresh KOTs every 5 seconds for real-time updates
     const interval = setInterval(() => {
       fetchSections(true);
     }, 5000);
-    
+
     return () => clearInterval(interval);
   }, [fetchSections]);
 
@@ -283,7 +283,7 @@ function KOTPageInner() {
     setUpdatingStatus(true);
     try {
       await apiClient.post(`/kots/section-kots/${selectedKot.section_kot_id}/status`, { status: nextStatus });
-      
+
       const updated = { ...selectedKot, status: nextStatus as any };
 
       // If served, close the detail panel and remove from lists immediately
@@ -328,15 +328,15 @@ function KOTPageInner() {
   // Apply date/time filters AND hide served KOTs (they auto-remove when marked Served)
   const filteredAllKots = allKots.filter(kot => {
     if (kot.status === 'served') return false; // auto-remove served
-    
+
     // Status Filter
     if (showStatusFilter !== 'all' && kot.status !== showStatusFilter) return false;
 
     // Search Filter (Table or KOT #)
     if (localSearch) {
       const search = localSearch.toLowerCase();
-      const matches = 
-        kot.table_number.toLowerCase().includes(search) || 
+      const matches =
+        kot.table_number.toLowerCase().includes(search) ||
         kot.section_kot_number.toLowerCase().includes(search);
       if (!matches) return false;
     }
@@ -352,15 +352,15 @@ function KOTPageInner() {
   for (const [key, kots] of Object.entries(kotsBySection)) {
     filteredKotsBySection[key] = kots.filter(kot => {
       if (kot.status === 'served') return false; // auto-remove served
-      
+
       // Status Filter
       if (showStatusFilter !== 'all' && kot.status !== showStatusFilter) return false;
 
       // Search Filter
       if (localSearch) {
         const search = localSearch.toLowerCase();
-        const matches = 
-          kot.table_number.toLowerCase().includes(search) || 
+        const matches =
+          kot.table_number.toLowerCase().includes(search) ||
           kot.section_kot_number.toLowerCase().includes(search);
         if (!matches) return false;
       }
@@ -395,27 +395,27 @@ function KOTPageInner() {
           </div>
           <div className="flex items-center gap-3">
             <div className="relative group">
-              <button 
+              <button
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors text-gray-600 shadow-sm"
               >
-                <Filter size={14} /> 
+                <Filter size={14} />
                 {showStatusFilter === 'all' ? 'All Status' : statusLabel(showStatusFilter)}
               </button>
-              
+
               <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 p-1">
-                <button 
+                <button
                   onClick={() => setShowStatusFilter('all')}
                   className={cn("w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-50", showStatusFilter === 'all' && "bg-orange-50 text-orange-600 font-bold")}
                 >
                   All Status
                 </button>
-                <button 
+                <button
                   onClick={() => setShowStatusFilter('pending')}
                   className={cn("w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-50", showStatusFilter === 'pending' && "bg-orange-50 text-orange-600 font-bold")}
                 >
                   New (Pending)
                 </button>
-                <button 
+                <button
                   onClick={() => setShowStatusFilter('acknowledged')}
                   className={cn("w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-50", showStatusFilter === 'acknowledged' && "bg-orange-50 text-orange-600 font-bold")}
                 >
@@ -425,7 +425,7 @@ function KOTPageInner() {
             </div>
 
             <div className="relative">
-              <input 
+              <input
                 type="text"
                 placeholder="Search table or KOT..."
                 value={localSearch}
@@ -434,7 +434,7 @@ function KOTPageInner() {
               />
               <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
               {localSearch && (
-                <button 
+                <button
                   onClick={() => setLocalSearch('')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
@@ -550,7 +550,7 @@ function KOTPageInner() {
                           <MoreVertical size={18} />
                         </button>
                         <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-xl shadow-xl opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-50 p-1">
-                          <button 
+                          <button
                             onClick={async () => {
                               if (confirm(`Are you sure you want to mark all KOTs in ${section.section_name} as ready?`)) {
                                 for (const kot of sectionKots) {
@@ -565,7 +565,7 @@ function KOTPageInner() {
                           >
                             <CheckCheck size={14} /> Mark All Ready
                           </button>
-                          <button 
+                          <button
                             onClick={() => setActiveTab(section.section_id)}
                             className="w-full text-left px-3 py-2 text-sm rounded-lg hover:bg-gray-50 text-gray-600 font-medium flex items-center gap-2"
                           >
@@ -714,31 +714,31 @@ function KOTPageInner() {
                   </DialogHeader>
                   <div className="font-mono text-xs border p-4 bg-gray-50 rounded-lg space-y-4">
                     <div className="text-center border-b pb-2">
-                            <p className="font-bold text-sm uppercase">Restro-Manager</p>
-                            <p className="text-[10px] text-gray-500">Kitchen Copy</p>
+                      <p className="font-bold text-sm uppercase">Restro-Manager</p>
+                      <p className="text-[10px] text-gray-500">Kitchen Copy</p>
                     </div>
                     <div className="grid grid-cols-2 gap-y-1">
-                            <span>ORDER ID:</span><span className="text-right font-bold">{selectedKot.order_id?.slice(0, 8)}</span>
-                            <span>KOT NO:</span><span className="text-right font-bold">#{selectedKot.section_kot_number}</span>
-                            <span>TABLE:</span><span className="text-right font-bold">{selectedKot.table_number}</span>
-                            <span>TIME:</span><span className="text-right">{fmtFull(selectedKot.generated_at)}</span>
+                      <span>ORDER ID:</span><span className="text-right font-bold">{selectedKot.order_id?.slice(0, 8)}</span>
+                      <span>KOT NO:</span><span className="text-right font-bold">#{selectedKot.section_kot_number}</span>
+                      <span>TABLE:</span><span className="text-right font-bold">{selectedKot.table_number}</span>
+                      <span>TIME:</span><span className="text-right">{fmtFull(selectedKot.generated_at)}</span>
                     </div>
                     <div className="border-t border-gray-300 pt-2">
-                        {selectedKot.items.map((it, i) => (
-                            <div key={i} className="flex justify-between py-1">
-                                <span>{it.item_name}</span>
-                                <span className="font-bold">x{it.quantity}</span>
-                            </div>
-                        ))}
+                      {selectedKot.items.map((it, i) => (
+                        <div key={i} className="flex justify-between py-1">
+                          <span>{it.item_name}</span>
+                          <span className="font-bold">x{it.quantity}</span>
+                        </div>
+                      ))}
                     </div>
                     <div className="border-t pt-2 text-center text-[10px] text-gray-400 italic">
-                        Software by RestroManager
+                      Software by RestroManager
                     </div>
                   </div>
                   <DialogFooter className="pt-4">
                     <Button variant="outline" onClick={() => setPrintKotOpen(false)}>Close</Button>
                     <Button className="bg-blue-600 hover:bg-blue-700 font-bold text-white" onClick={() => window.print()}>
-                        <Printer className="mr-2" size={16} /> Print Now
+                      <Printer className="mr-2" size={16} /> Print Now
                     </Button>
                   </DialogFooter>
                 </DialogContent>

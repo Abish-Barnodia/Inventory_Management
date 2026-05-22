@@ -102,7 +102,8 @@ export interface CanFreeTableResult {
  */
 export async function canFreeTable(
   client: PoolClient,
-  tableId: string
+  tableId: string,
+  occupiedSince: Date | null = null
 ): Promise<CanFreeTableResult> {
   // ── Step 1: Check all bills for this table are PAID ───────────────────────
   //    Edge Case 4 (Split Billing): ALL bills must be paid.
@@ -111,9 +112,9 @@ export async function canFreeTable(
        COUNT(*)                                       AS total_bills,
        COUNT(*) FILTER (WHERE payment_status = 'paid') AS paid_bills
      FROM bills
-     WHERE table_id = $1
+     WHERE table_id = $1 AND ($2::timestamp IS NULL OR created_at >= $2::timestamp)
      FOR SHARE`,
-    [tableId]
+    [tableId, occupiedSince]
   );
 
   const totalBills = parseInt(billsResult.rows[0].total_bills, 10);
@@ -147,9 +148,9 @@ export async function canFreeTable(
      FROM section_kot_items ski
      JOIN section_kots sk  ON sk.section_kot_id = ski.section_kot_id
      JOIN kots k           ON k.kot_id          = sk.parent_kot_id
-     WHERE k.table_id = $1
+     WHERE k.table_id = $1 AND ($2::timestamp IS NULL OR k.generated_at >= $2::timestamp)
      FOR SHARE`,
-    [tableId]
+    [tableId, occupiedSince]
   );
 
   // Count active statuses
@@ -213,9 +214,9 @@ export function deriveTableStatus(
   activeItemCount: number,
   hasAnyBill: boolean
 ): TableStatus {
+  if (activeItemCount > 0) return 'waiting_for_service_completion'; // Priority: food is cooking
   if (!hasAnyBill) return 'occupied';           // no bill yet, just occupied
-  if (!billsPaid)   return 'billing_done';       // bill generated but not paid
-  if (activeItemCount > 0) return 'waiting_for_service_completion';
+  if (!billsPaid)  return 'billing_done';       // bill generated but not paid
   return 'ready_to_free';
 }
 
@@ -238,7 +239,7 @@ export async function tryAutoFreeTable(
 
     // Lock the table row to prevent concurrent free attempts (EC-9).
     const tableRow = await client.query(
-      `SELECT table_id, status FROM tables WHERE table_id = $1 FOR UPDATE`,
+      `SELECT table_id, status, occupied_since FROM tables WHERE table_id = $1 FOR UPDATE`,
       [tableId]
     );
     if (tableRow.rows.length === 0) {
@@ -251,7 +252,7 @@ export async function tryAutoFreeTable(
       }};
     }
 
-    const validation = await canFreeTable(client, tableId);
+    const validation = await canFreeTable(client, tableId, tableRow.rows[0].occupied_since);
 
     let newStatus: string = tableRow.rows[0].status;
 
@@ -276,11 +277,11 @@ export async function tryAutoFreeTable(
       });
     } else {
       // Derive and persist the correct intermediate status
-      const hasAnyBill = validation.unpaidBillCount >= 0 && validation.billsPaid !== false;
+      const hasAnyBill = validation.unpaidBillCount > 0 || validation.billsPaid === true;
       const derived = deriveTableStatus(
         validation.billsPaid,
         validation.activeItemCount,
-        validation.billsPaid || validation.unpaidBillCount > 0
+        hasAnyBill
       );
 
       await client.query(

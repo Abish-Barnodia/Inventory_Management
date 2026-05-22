@@ -221,13 +221,8 @@ billsRouter.post('/', async (req, res) => {
       );
     }
 
-    // Update order statuses
-    if (orderIds && orderIds.length > 0) {
-      await client.query(
-        `UPDATE orders SET status = 'completed' WHERE order_id = ANY($1::uuid[])`,
-        [orderIds]
-      );
-    }
+    // We no longer update order status to 'completed' here.
+    // Order status should be driven by the KOT workflow (when items are served).
 
     // Update table billing status — but NEVER auto-free here (RULE 2)
     if (tableId) {

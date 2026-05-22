@@ -3,6 +3,11 @@ import { NextFunction, Request, Response } from 'express';
 const ADMIN_ROLE = 'ADMIN';
 
 export function requireAdminRole(req: Request, res: Response, next: NextFunction): void {
+  if (req.method === 'OPTIONS') {
+    next();
+    return;
+  }
+
   const authorization = req.header('authorization');
   if (!authorization) {
     res.status(401).json({ message: 'Unauthorized: missing Authorization header.' });

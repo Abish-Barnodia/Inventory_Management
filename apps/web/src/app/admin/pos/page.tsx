@@ -276,7 +276,7 @@ export default function POSTerminal() {
 
   const fetchTableOrders = useCallback(async (tableId: string) => {
     const table = dbTables.find(t => t.table_id === tableId);
-    if (!table || table.status !== 'occupied') {
+    if (!table || table.status === 'free') {
       setExistingOrders([]);
       return;
     }
@@ -1207,29 +1207,38 @@ export default function POSTerminal() {
             </div>
             
             <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto pr-1 scrollbar-thin">
-              {dbTables.map((t) => (
-                <button
-                  key={t.table_id}
-                  onClick={() => {
-                    setSelectedTable(t.table_id);
-                    setSelectedTableLabel(`Table ${t.table_number}`);
-                  }}
-                  className={cn(
-                    "flex flex-col items-center justify-center py-2 rounded-md border transition-all text-[10px] font-bold",
-                    selectedTable === t.table_id
-                      ? "bg-blue-500 text-white border-blue-600 shadow-sm scale-95"
-                      : t.status === 'occupied'
-                        ? "bg-amber-50 text-amber-600 border-amber-200"
-                        : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
-                  )}
-                >
-                  <span className="text-xs">T{t.table_number}</span>
-                  <div className={cn(
-                    "w-1.5 h-1.5 rounded-full mt-1",
-                    t.status === 'occupied' ? "bg-amber-500" : "bg-emerald-500"
-                  )} />
-                </button>
-              ))}
+              {dbTables.map((t) => {
+                let tableColorClass = "bg-white text-gray-600 border-gray-200 hover:border-blue-300";
+                let dotColorClass = "bg-emerald-500";
+                
+                if (selectedTable === t.table_id) {
+                  tableColorClass = "bg-blue-500 text-white border-blue-600 shadow-sm scale-95";
+                  dotColorClass = "bg-white";
+                } else if (t.status === 'billing_done') {
+                  tableColorClass = "bg-purple-50 text-purple-600 border-purple-200";
+                  dotColorClass = "bg-purple-500";
+                } else if (t.status !== 'free') {
+                  tableColorClass = "bg-amber-50 text-amber-600 border-amber-200";
+                  dotColorClass = "bg-amber-500";
+                }
+
+                return (
+                  <button
+                    key={t.table_id}
+                    onClick={() => {
+                      setSelectedTable(t.table_id);
+                      setSelectedTableLabel(`Table ${t.table_number}`);
+                    }}
+                    className={cn(
+                      "flex flex-col items-center justify-center py-2 rounded-md border transition-all text-[10px] font-bold",
+                      tableColorClass
+                    )}
+                  >
+                    <span className="text-xs">T{t.table_number}</span>
+                    <div className={cn("w-1.5 h-1.5 rounded-full mt-1", dotColorClass)} />
+                  </button>
+                );
+              })}
             </div>
 
             <div className="grid grid-cols-2 gap-3 mt-4">

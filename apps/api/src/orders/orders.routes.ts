@@ -226,7 +226,7 @@ ordersRouter.delete('/:orderId', async (req, res) => {
 
     // If no more open orders for this table, free the table
     const remaining = await client.query(
-      `SELECT COUNT(*) as count FROM orders WHERE table_id = $1 AND status != 'billed'`,
+      `SELECT COUNT(*) as count FROM orders WHERE table_id = $1 AND status != 'completed'`,
       [table_id]
     );
     if (parseInt(remaining.rows[0].count) === 0) {

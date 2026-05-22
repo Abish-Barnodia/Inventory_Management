@@ -19,7 +19,7 @@ tablesRouter.get('/', async (req, res) => {
          t.table_id, t.table_number, t.status,
          t.is_bill_paid, t.occupied_since, t.active_item_count,
          t.created_at,
-         -- item counts per table for UI status summary
+         -- item counts per table for UI status summary (current session only)
          COUNT(ski.section_kot_item_id) FILTER (WHERE ski.status = 'pending')   AS pending_count,
          COUNT(ski.section_kot_item_id) FILTER (WHERE ski.status = 'preparing') AS preparing_count,
          COUNT(ski.section_kot_item_id) FILTER (WHERE ski.status = 'ready')     AS ready_count,
@@ -27,9 +27,11 @@ tablesRouter.get('/', async (req, res) => {
          COUNT(DISTINCT b.id)           FILTER (WHERE b.payment_status = 'unpaid') AS unpaid_bills
        FROM tables t
        LEFT JOIN kots k               ON k.table_id        = t.table_id
+                                     AND (t.occupied_since IS NULL OR k.generated_at >= t.occupied_since)
        LEFT JOIN section_kots sk      ON sk.parent_kot_id  = k.kot_id
        LEFT JOIN section_kot_items ski ON ski.section_kot_id = sk.section_kot_id
        LEFT JOIN bills b              ON b.table_id        = t.table_id
+                                     AND (t.occupied_since IS NULL OR b.created_at >= t.occupied_since)
        GROUP BY t.table_id
        ORDER BY t.table_number`
     );
@@ -57,9 +59,11 @@ tablesRouter.get('/:tableId', async (req, res) => {
          COUNT(DISTINCT b.id)           FILTER (WHERE b.payment_status = 'unpaid') AS unpaid_bills
        FROM tables t
        LEFT JOIN kots k                ON k.table_id         = t.table_id
+                                      AND (t.occupied_since IS NULL OR k.generated_at >= t.occupied_since)
        LEFT JOIN section_kots sk       ON sk.parent_kot_id   = k.kot_id
        LEFT JOIN section_kot_items ski ON ski.section_kot_id = sk.section_kot_id
        LEFT JOIN bills b               ON b.table_id         = t.table_id
+                                      AND (t.occupied_since IS NULL OR b.created_at >= t.occupied_since)
        WHERE t.table_id = $1
        GROUP BY t.table_id`,
       [tableId]
@@ -274,15 +278,53 @@ tablesRouter.get('/:tableId/audit', async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /tables/:tableId/orders — all orders for a table
+// GET /tables/:tableId/orders — active orders for a table (current session only)
 // ─────────────────────────────────────────────────────────────────────────────
 tablesRouter.get('/:tableId/orders', async (req, res) => {
   const { tableId } = req.params;
   try {
+    // First fetch occupied_since for session scoping
+    const tableResult = await pool.query(
+      `SELECT occupied_since FROM tables WHERE table_id = $1`,
+      [tableId]
+    );
+    const occupiedSince = tableResult.rows[0]?.occupied_since ?? null;
+
+    // ── Auto-repair: mark stale 'sent_to_kitchen' orders as 'completed' ──────
+    // This fixes orders that got stuck because the KOT-served status update
+    // failed (e.g. due to the old enum cast bug). An order is stale if ALL
+    // of its KOT items are in a terminal state (served or cancelled).
+    await pool.query(
+      `UPDATE orders
+       SET status = 'completed'
+       WHERE table_id = $1
+         AND status IN ('sent_to_kitchen', 'open')
+         AND ($2::timestamp IS NULL OR created_at >= $2::timestamp)
+         AND EXISTS (
+           -- order must have at least one KOT
+           SELECT 1 FROM kots k WHERE k.order_id = orders.order_id
+         )
+         AND NOT EXISTS (
+           -- no KOT item may still be in an active (non-terminal) state
+           SELECT 1
+           FROM kots k
+           JOIN section_kots sk   ON sk.parent_kot_id   = k.kot_id
+           JOIN section_kot_items ski ON ski.section_kot_id = sk.section_kot_id
+           WHERE k.order_id = orders.order_id
+             AND ski.status NOT IN ('served', 'cancelled')
+         )`,
+      [tableId, occupiedSince]
+    );
+    // ─────────────────────────────────────────────────────────────────────────
+
     const ordersResult = await pool.query(
       `SELECT o.order_id, o.table_id, o.order_phase, o.status, o.created_at
-       FROM orders o WHERE o.table_id = $1 ORDER BY o.order_phase`,
-      [tableId]
+       FROM orders o
+       WHERE o.table_id = $1
+         AND o.status != 'completed'
+         AND ($2::timestamp IS NULL OR o.created_at >= $2::timestamp)
+       ORDER BY o.order_phase`,
+      [tableId, occupiedSince]
     );
 
     const orders = await Promise.all(
