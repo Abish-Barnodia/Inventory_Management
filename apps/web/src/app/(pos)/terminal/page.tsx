@@ -25,6 +25,9 @@ export default function PosTerminalPage() {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  // Tracks existing open orders for the selected table (shown in cart)
+  const [existingOrderId, setExistingOrderId] = useState<string | null>(null);
+  const [loadingTableOrders, setLoadingTableOrders] = useState(false);
 
   // Dialog states
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
@@ -60,11 +63,18 @@ export default function PosTerminalPage() {
           gstRate: i.gst_percentage || 5
         }));
 
+        // BUG FIX: map ALL non-free statuses to 'occupied' so they show the red/orange dot
+        // Previously new statuses like billing_done, waiting_for_service_completion, ready_to_free
+        // were falling through as 'reserved' and appearing as available (green dot)
         const tbls = tblsRes.data.map((t: any) => ({
           id: t.table_id.toString(),
           number: t.table_number.toString(),
           capacity: t.capacity || 4,
-          status: t.status === 'free' ? 'available' : t.status === 'occupied' ? 'occupied' : 'reserved'
+          status: t.status === 'free' ? 'available' : 'occupied',
+          // Preserve raw status for display in the table picker dialog
+          rawStatus: t.status as string,
+          isBillPaid: t.is_bill_paid ?? false,
+          activeItemCount: t.active_item_count ?? 0,
         }));
 
         setCategories(cats);
@@ -140,9 +150,50 @@ export default function PosTerminalPage() {
     setIsTableDialogOpen(true);
   };
 
-  const confirmTableSelection = (tableId: string | null) => {
+  // BUG FIX: When selecting an occupied table, fetch its existing open orders
+  // and pre-populate the cart so staff can see what's already been ordered.
+  const confirmTableSelection = async (tableId: string | null) => {
     setSelectedTable(tableId);
     setIsTableDialogOpen(false);
+    setExistingOrderId(null);
+    setCart([]);
+
+    if (!tableId) return;
+
+    // Find the table — if it's occupied, load its existing order items
+    const tbl = tables.find(t => t.id === tableId) as any;
+    if (!tbl || tbl.status === 'available') return;
+
+    setLoadingTableOrders(true);
+    try {
+      const ordersRes = await apiClient.get(`/tables/${tableId}/orders`);
+      const orders: any[] = ordersRes.data ?? [];
+
+      // Find the latest open order
+      const openOrder = orders
+        .filter((o: any) => o.status === 'open' || o.status === 'sent_to_kitchen')
+        .sort((a: any, b: any) => b.order_phase - a.order_phase)[0];
+
+      if (openOrder && Array.isArray(openOrder.items) && openOrder.items.length > 0) {
+        setExistingOrderId(openOrder.order_id);
+        // Map the existing items into CartItem shape so staff can see them
+        const cartItems: CartItem[] = openOrder.items.map((oi: any) => ({
+          id: String(oi.item_id),
+          name: oi.item_name,
+          price: parseFloat(oi.price_at_billing ?? 0),
+          quantity: oi.quantity,
+          categoryId: '',
+          description: '',
+          isAvailable: true,
+          gstRate: parseFloat(oi.gst_percent_at_billing ?? 5),
+        }));
+        setCart(cartItems);
+      }
+    } catch (err) {
+      console.warn('Could not load existing table orders:', err);
+    } finally {
+      setLoadingTableOrders(false);
+    }
   };
 
   const handlePlaceOrder = async () => {
@@ -284,14 +335,28 @@ export default function PosTerminalPage() {
           </div>
         </div>
       </div>
+      {/* Loading overlay while fetching existing table orders */}
+      {loadingTableOrders && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm text-blue-700">
+          <Loader2 size={16} className="animate-spin shrink-0" />
+          Loading existing order for this table...
+        </div>
+      )}
 
-      {/* Table Selection Dialog */}
       <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
             <DialogTitle>{UI_CONTENT.pos.terminal.tableSelect}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-3 gap-4 py-4">
+
+          {/* Legend */}
+          <div className="flex gap-4 text-xs text-muted-foreground pb-1">
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" /> Free</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" /> Occupied</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-green-600 inline-block" /> Bill Paid</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 py-2 max-h-[400px] overflow-y-auto">
             <Button
               variant={selectedTable === null ? 'default' : 'outline'}
               className="h-24 flex flex-col gap-2 rounded-xl"
@@ -299,18 +364,38 @@ export default function PosTerminalPage() {
             >
               <span>{UI_CONTENT.pos.terminal.toGo}</span>
             </Button>
-            {tables.map(table => (
-              <Button
-                key={table.id}
-                variant={selectedTable === table.id ? 'default' : 'outline'}
-                disabled={table.status === 'occupied' || table.status === 'reserved'}
-                className="h-24 flex flex-col gap-2 rounded-xl relative"
-                onClick={() => confirmTableSelection(table.id)}
-              >
-                <span className="text-xl font-bold">T{table.number}</span>
-                <span className="text-xs text-muted-foreground">{table.capacity} Seats</span>
-              </Button>
-            ))}
+            {tables.map(tableRaw => {
+              const table = tableRaw as any;
+              const isFree = table.status === 'available';
+              const isOccupied = !isFree;
+              const isBillPaid = table.isBillPaid;
+              const isSelected = selectedTable === table.id;
+
+              let dotColor = 'bg-emerald-500';
+              let statusLabel = 'Free';
+              if (isOccupied && isBillPaid) { dotColor = 'bg-green-600'; statusLabel = 'Bill Paid'; }
+              else if (isOccupied) { dotColor = 'bg-orange-500'; statusLabel = 'Occupied'; }
+
+              return (
+                <Button
+                  key={table.id}
+                  variant={isSelected ? 'default' : 'outline'}
+                  // ALLOW selecting occupied tables (to add more items / view existing order)
+                  className={`h-24 flex flex-col gap-1 rounded-xl relative ${
+                    isOccupied && !isSelected ? 'border-orange-300 bg-orange-50 hover:bg-orange-100' : ''
+                  }`}
+                  onClick={() => confirmTableSelection(table.id)}
+                >
+                  {/* Status dot */}
+                  <span className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full ${dotColor}`} />
+                  <span className="text-xl font-bold">T{table.number}</span>
+                  <span className="text-[10px] text-muted-foreground">{statusLabel}</span>
+                  {isOccupied && (table.activeItemCount > 0) && (
+                    <span className="text-[10px] font-semibold text-orange-600">{table.activeItemCount} active items</span>
+                  )}
+                </Button>
+              );
+            })}
           </div>
         </DialogContent>
       </Dialog>
