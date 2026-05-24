@@ -496,5 +496,65 @@ export async function initializeDatabase(): Promise<void> {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_kots_table_id            ON kots(table_id);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_bills_payment_status     ON bills(payment_status);`);
 
+  // 8. Finances module tables
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id SERIAL PRIMARY KEY,
+      expense_type VARCHAR NOT NULL CHECK (expense_type IN ('Purchase', 'Fixed', 'Variable')),
+      description VARCHAR NOT NULL,
+      category VARCHAR,
+      amount NUMERIC(10,2) NOT NULL,
+      payment_method VARCHAR,
+      vendor VARCHAR,
+      expense_date DATE NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS revenue_ledger (
+      id SERIAL PRIMARY KEY,
+      revenue_date DATE NOT NULL,
+      gross_revenue NUMERIC(10,2) NOT NULL,
+      source VARCHAR,
+      batch_id VARCHAR,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // 9. Inventory module tables
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS stock_entries (
+      id SERIAL PRIMARY KEY,
+      invoice_number VARCHAR,
+      vendor_name VARCHAR,
+      total_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
+      payment_status VARCHAR NOT NULL DEFAULT 'unpaid',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS stock_requests (
+      id SERIAL PRIMARY KEY,
+      request_number VARCHAR NOT NULL UNIQUE,
+      department VARCHAR,
+      requested_by VARCHAR,
+      status VARCHAR NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS stock_request_items (
+      id SERIAL PRIMARY KEY,
+      request_id INTEGER NOT NULL REFERENCES stock_requests(id) ON DELETE CASCADE,
+      item_name VARCHAR NOT NULL,
+      quantity_requested INTEGER NOT NULL DEFAULT 0,
+      quantity_approved INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+
   console.log('Table management schema migrations complete.');
 }

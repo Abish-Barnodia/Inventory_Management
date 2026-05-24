@@ -1,284 +1,353 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { RoleGuard } from '@/components/auth/role-guard';
-import { cn, formatDate } from '@/lib/utils';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Users, 
-  Receipt, 
-  Star,
-  Clock,
-  Zap,
-  RefreshCcw,
-} from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { UI_CONTENT } from '@/lib/content';
-import { mockDb, DashboardMetrics } from '@/lib/mock-api';
+import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { 
+  Banknote, 
+  BarChart3, 
+  Package, 
+  ClipboardList, 
+  AlertTriangle,
+  Plus,
+  Download,
+  Upload,
+  ArrowUp,
+  CreditCard,
+  FileText
+} from 'lucide-react';
 
-export default function AdminDashboard() {
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentTime, setCurrentTime] = useState('');
-
-  const { admin } = UI_CONTENT.navigation;
-  const content = admin.metrics;
-  const chartsContent = admin.charts;
-  const actionsContent = admin.actions;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      const data = await mockDb.getDashboardMetrics();
-      setMetrics(data);
-      setIsLoading(false);
-    };
-
-    fetchData();
-
-    // Update time
-    const updateTime = () => {
-      setCurrentTime(formatDate(new Date()));
-    };
-
-    updateTime();
-    const timer = setInterval(updateTime, 60000);
-    return () => clearInterval(timer);
-  }, []);
-
-  if (isLoading || !metrics) {
-    return (
-      <DashboardLayout>
-        <div className="flex h-full items-center justify-center">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      </DashboardLayout>
-    );
-  }
+export default function AdminDashboardPage() {
+  const statCards = [
+    {
+      title: "TODAY'S REVENUE",
+      value: "₹84,500",
+      subtext: "↑ 12% vs yesterday",
+      subtextColor: "text-green-500",
+      icon: Banknote,
+      iconColor: "text-green-500",
+      iconBg: "bg-green-100",
+      topBorder: "border-t-green-500"
+    },
+    {
+      title: "THIS MONTH'S P&L",
+      value: "₹7.7L",
+      subtext: "Net profit MTD",
+      subtextColor: "text-gray-400",
+      icon: BarChart3,
+      iconColor: "text-blue-500",
+      iconBg: "bg-blue-100",
+      topBorder: "border-t-blue-500"
+    },
+    {
+      title: "INVENTORY ITEMS",
+      value: "142",
+      subtext: "Items with stock > 0",
+      subtextColor: "text-gray-400",
+      icon: Package,
+      iconColor: "text-purple-500",
+      iconBg: "bg-purple-100",
+      topBorder: "border-t-purple-500"
+    },
+    {
+      title: "PENDING REQUESTS",
+      value: "5",
+      subtext: "Awaiting approval",
+      subtextColor: "text-gray-400",
+      valueColor: "text-yellow-600",
+      icon: ClipboardList,
+      iconColor: "text-yellow-600",
+      iconBg: "bg-yellow-100",
+      topBorder: "border-t-yellow-400"
+    },
+    {
+      title: "LOW STOCK ALERTS",
+      value: "8",
+      subtext: "Items below threshold",
+      subtextColor: "text-gray-400",
+      valueColor: "text-red-500",
+      icon: AlertTriangle,
+      iconColor: "text-red-500",
+      iconBg: "bg-red-100",
+      topBorder: "border-t-red-500"
+    }
+  ];
 
   return (
-    <RoleGuard allowedRoles={['superadmin', 'admin']}>
-      <DashboardLayout>
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{admin.welcomeTitle}</h1>
-            <p className="text-muted-foreground text-sm">{admin.welcomeSubtitle}</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-white px-3 py-1.5 rounded-xl border flex items-center gap-2 text-xs font-medium text-muted-foreground shadow-sm">
-              <Clock size={14} className="text-primary" />
-              {currentTime}
-            </div>
-            <Button variant="outline" size="sm" className="bg-white rounded-xl gap-2 text-xs font-medium border shadow-sm">
-              <Zap size={14} className="text-primary fill-primary" />
-              {actionsContent.liveSync}
-            </Button>
-            <Button variant="outline" size="sm" className="bg-white rounded-xl gap-2 text-xs font-medium border shadow-sm">
-              <Users size={14} className="text-primary" />
-              {actionsContent.waiterDesk}
-            </Button>
-            <Button variant="outline" size="sm" className="bg-white rounded-xl gap-2 text-xs font-medium border shadow-sm">
-              <RefreshCcw size={14} />
-              {actionsContent.refresh}
-            </Button>
-          </div>
-        </div>
-
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Sales */}
-          <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden group hover:shadow-md transition-all">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{content.totalSales.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">₹{metrics.totalSales}</div>
-              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-foreground text-white mb-4">
-                {content.totalSales.footer}
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-[10px] text-muted-foreground border-t pt-4">
-                <div>
-                  <p>{content.totalSales.subtotal}</p>
-                  <p className="font-bold text-foreground">₹{metrics.subtotal}</p>
+    <DashboardLayout>
+      <div className="space-y-6 animate-in fade-in duration-500 font-sans">
+        
+        {/* Top Stat Cards */}
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3 lg:grid-cols-5">
+          {statCards.map((card, i) => (
+            <Card key={i} className={`border-t-[3px] shadow-sm ${card.topBorder}`}>
+              <CardContent className="p-4 flex flex-col justify-between h-full">
+                <div className={`w-8 h-8 rounded-md ${card.iconBg} flex items-center justify-center mb-3`}>
+                  <card.icon className={`w-4 h-4 ${card.iconColor}`} />
                 </div>
                 <div>
-                  <p>{content.totalSales.discount}</p>
-                  <p className="font-bold text-foreground">₹{metrics.discount}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{card.title}</p>
+                  <h3 className={`text-2xl font-black ${card.valueColor || 'text-gray-800'}`}>{card.value}</h3>
+                  <p className={`text-[11px] mt-1 font-medium ${card.subtextColor}`}>{card.subtext}</p>
                 </div>
-                <div>
-                  <p>{content.totalSales.tax}</p>
-                  <p className="font-bold text-foreground">₹{metrics.tax}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
+            <Plus className="w-4 h-4 mr-2 text-purple-600 stroke-[3]" /> Add Stock Entry
+          </Button>
+          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
+            <CreditCard className="w-4 h-4 mr-2 text-green-600 stroke-[3]" /> Add Expense
+          </Button>
+          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
+            <Download className="w-4 h-4 mr-2 text-blue-600 stroke-[3]" /> Import POS Report
+          </Button>
+          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
+            <Upload className="w-4 h-4 mr-2 text-red-500 stroke-[3]" /> Export Report
+          </Button>
+        </div>
+
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+          {/* P&L Trend Chart */}
+          <Card className="lg:col-span-2 shadow-sm border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-bold text-gray-800">P&L Trend — Last 30 Days</CardTitle>
+              <div className="flex items-center bg-gray-100 rounded-md p-0.5">
+                <button className="px-3 py-1 text-[11px] font-bold bg-white shadow-sm rounded text-gray-800">30D</button>
+                <button className="px-3 py-1 text-[11px] font-bold text-gray-500 hover:text-gray-800">7D</button>
+                <button className="px-3 py-1 text-[11px] font-bold text-gray-500 hover:text-gray-800">90D</button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-4 text-xs font-semibold mb-6">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-[#10b981] rounded-full"></div> Revenue</div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-1 bg-[#ef4444] rounded-full"></div> Expenses</div>
+              </div>
+              
+              {/* Simple SVG Line Chart Mockup */}
+              <div className="relative w-full h-[220px] mt-2">
+                <svg viewBox="0 0 1000 200" className="w-full h-full preserve-3d" preserveAspectRatio="none">
+                  {/* Defs for gradients */}
+                  <defs>
+                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity="0.2" />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity="0.1" />
+                      <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Revenue Line */}
+                  <path d="M0,150 C100,140 200,80 300,70 C400,60 500,40 600,60 C700,80 800,30 900,40 L1000,45" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M0,150 C100,140 200,80 300,70 C400,60 500,40 600,60 C700,80 800,30 900,40 L1000,45 L1000,200 L0,200 Z" fill="url(#revenueGradient)" />
+
+                  {/* Expense Line */}
+                  <path d="M0,180 C150,170 250,165 350,170 C450,175 550,160 650,165 C750,170 850,140 1000,145" fill="none" stroke="#ef4444" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M0,180 C150,170 250,165 350,170 C450,175 550,160 650,165 C750,170 850,140 1000,145 L1000,200 L0,200 Z" fill="url(#expenseGradient)" />
+                </svg>
+                {/* X Axis Labels */}
+                <div className="absolute bottom-[-10px] left-0 w-full flex justify-between text-[10px] font-semibold text-gray-400 px-2">
+                  <span>May 1</span>
+                  <span>May 10</span>
+                  <span>May 20</span>
+                  <span>May 23</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Total Customers */}
-          <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden hover:shadow-md transition-all">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{content.totalCustomers.label}</CardTitle>
-              <div className="p-2 bg-blue-50 rounded-xl">
-                <Users size={18} className="text-blue-500" />
-              </div>
+          {/* Top Expense Categories */}
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-4">
+              <CardTitle className="text-sm font-bold text-gray-800">Top Expense Categories</CardTitle>
+              <span className="text-[10px] text-gray-400 font-semibold">This Month</span>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">{metrics.totalCustomers}</div>
-              <div className={cn(
-                "text-[10px] font-bold mb-6",
-                metrics.customerGrowth >= 0 ? "text-green-500" : "text-red-500"
-              )}>
-                {metrics.customerGrowth >= 0 ? '+' : ''}{metrics.customerGrowth}% 
-                <span className="text-muted-foreground font-normal ml-1">{content.totalCustomers.footer}</span>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground">{content.totalCustomers.retention}</p>
-                <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary" style={{ width: `${metrics.customerRetention}%` }} />
+              <div className="space-y-5 mt-2">
+                {/* Veggies */}
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="w-24 text-gray-500">Vegetables</span>
+                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="bg-[#f97316] h-full rounded-full" style={{ width: '85%' }}></div>
+                  </div>
+                  <span className="w-16 text-right text-gray-800">₹43,200</span>
+                </div>
+                {/* Dairy */}
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="w-24 text-gray-500">Dairy</span>
+                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="bg-[#3b82f6] h-full rounded-full" style={{ width: '70%' }}></div>
+                  </div>
+                  <span className="w-16 text-right text-gray-800">₹35,600</span>
+                </div>
+                {/* Meat */}
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="w-24 text-gray-500">Meat</span>
+                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="bg-[#8b5cf6] h-full rounded-full" style={{ width: '60%' }}></div>
+                  </div>
+                  <span className="w-16 text-right text-gray-800">₹28,900</span>
+                </div>
+                {/* Dry Goods */}
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="w-24 text-gray-500">Dry Goods</span>
+                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="bg-[#eab308] h-full rounded-full" style={{ width: '40%' }}></div>
+                  </div>
+                  <span className="w-16 text-right text-gray-800">₹19,800</span>
+                </div>
+                {/* Beverages */}
+                <div className="flex items-center justify-between text-xs font-semibold">
+                  <span className="w-24 text-gray-500">Beverages</span>
+                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                    <div className="bg-[#10b981] h-full rounded-full" style={{ width: '25%' }}></div>
+                  </div>
+                  <span className="w-16 text-right text-gray-800">₹12,400</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Avg Order Value */}
-          <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden hover:shadow-md transition-all">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{content.avgOrder.label}</CardTitle>
-              <div className="p-2 bg-red-50 rounded-xl">
-                <Receipt size={18} className="text-red-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">₹{metrics.avgOrderValue}</div>
-              <div className={cn(
-                "text-[10px] font-bold mb-6",
-                metrics.avgOrderGrowth >= 0 ? "text-green-500" : "text-red-500"
-              )}>
-                {metrics.avgOrderGrowth >= 0 ? '+' : ''}{metrics.avgOrderGrowth}% 
-                <span className="text-muted-foreground font-normal ml-1">{content.avgOrder.footer}</span>
-              </div>
-              <div className="flex gap-1 items-end h-8">
-                {[30, 45, 25, 60, 40, 50, 80, 40, 100].map((h, i) => (
-                  <div key={i} className={cn("flex-1 bg-red-100 rounded-sm", i === 8 && "bg-red-500")} style={{ height: `${h}%` }} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Customer Satisfaction */}
-          <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden hover:shadow-md transition-all">
-            <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-muted-foreground">{content.satisfaction.label}</CardTitle>
-              <div className="p-2 bg-yellow-50 rounded-xl">
-                <Star size={18} className="text-yellow-500 fill-yellow-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="text-3xl font-bold text-foreground">{metrics.customerSatisfaction}</div>
-                <Star size={20} className="text-yellow-400 fill-yellow-400" />
-              </div>
-              <div className={cn(
-                "text-[10px] font-bold mb-8",
-                metrics.satisfactionGrowth >= 0 ? "text-green-500" : "text-red-500"
-              )}>
-                {metrics.satisfactionGrowth >= 0 ? '+' : ''}{metrics.satisfactionGrowth} 
-                <span className="text-muted-foreground font-normal ml-1">{content.satisfaction.footer}</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground leading-tight">
-                {content.satisfaction.reviewsSource}
-              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2 border-none shadow-sm bg-white rounded-3xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <CardTitle className="text-lg font-bold">{chartsContent.sales.title}</CardTitle>
-              <div className="flex gap-4">
-                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                  {chartsContent.sales.dineIn}
-                </div>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-[#3d2b1f]" />
-                  {chartsContent.sales.online}
-                </div>
-              </div>
-            </div>
-            <div className="h-[250px] w-full relative">
-              <svg className="w-full h-full" viewBox="0 0 800 200" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="gradient-orange" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.2" />
-                    <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
-                <path 
-                  d="M0 150 Q 100 160, 200 140 T 400 130 T 600 80 T 800 100" 
-                  fill="none" 
-                  stroke="var(--primary)" 
-                  strokeWidth="4" 
-                />
-                <path 
-                  d="M0 150 Q 100 160, 200 140 T 400 130 T 600 80 T 800 100 V 200 H 0 Z" 
-                  fill="url(#gradient-orange)" 
-                />
-                <path 
-                  d="M0 110 Q 150 120, 300 170 T 500 130 T 700 110 T 800 115" 
-                  fill="none" 
-                  stroke="#3d2b1f" 
-                  strokeWidth="4" 
-                />
-              </svg>
-              <div className="flex justify-between mt-4 text-[10px] text-muted-foreground font-medium px-2">
-                {metrics.salesData.labels.map((label, idx) => (
-                  <span key={idx}>{label}</span>
-                ))}
-              </div>
-            </div>
+        <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
+          {/* Recent Stock Requests */}
+          <Card className="lg:col-span-2 shadow-sm border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100">
+              <CardTitle className="text-sm font-bold text-gray-800">Recent Stock Requests</CardTitle>
+              <a href="#" className="text-xs font-bold text-orange-500 hover:text-orange-600 flex items-center">
+                View all <span className="ml-1">→</span>
+              </a>
+            </CardHeader>
+            <CardContent className="p-0">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-gray-100 text-[10px] uppercase text-gray-400 font-bold bg-gray-50/50">
+                    <th className="px-4 py-3 font-semibold">Item</th>
+                    <th className="px-4 py-3 font-semibold">Department</th>
+                    <th className="px-4 py-3 font-semibold text-center">Qty</th>
+                    <th className="px-4 py-3 font-semibold text-center">Status</th>
+                    <th className="px-4 py-3 font-semibold text-right">Time</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs font-semibold text-gray-700 divide-y divide-gray-100">
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Rice</td>
+                    <td className="px-4 py-3">Main Kitchen</td>
+                    <td className="px-4 py-3 text-center">10 kg</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
+                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pending
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-400">2 hrs ago</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Tomatoes</td>
+                    <td className="px-4 py-3">Tea Stall</td>
+                    <td className="px-4 py-3 text-center">5 kg</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-200">
+                        ✓ Approved
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-400">4 hrs ago</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Milk</td>
+                    <td className="px-4 py-3">Bakery</td>
+                    <td className="px-4 py-3 text-center">20 L</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
+                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pending
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-400">5 hrs ago</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Sugar</td>
+                    <td className="px-4 py-3">Main Kitchen</td>
+                    <td className="px-4 py-3 text-center">2 kg</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
+                        ✓ Issued
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-400">Yesterday</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Oil</td>
+                    <td className="px-4 py-3">Tea Stall</td>
+                    <td className="px-4 py-3 text-center">5 L</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
+                        ✕ Rejected
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-gray-400">Yesterday</td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm bg-white rounded-3xl p-6">
-            <div className="flex justify-between items-center mb-6">
-              <CardTitle className="text-lg font-bold">{chartsContent.popularTime.title}</CardTitle>
-              <Button variant="ghost" size="sm" className="text-[10px] font-bold h-6 gap-1 px-2">
-                {chartsContent.popularTime.filter} <ChevronRight size={12} />
-              </Button>
-            </div>
-            <div className="h-[250px] flex flex-col justify-end border-b border-l border-dashed border-muted px-4 py-2 relative">
-               <div className="flex justify-between text-[10px] text-muted-foreground font-medium absolute bottom-[-24px] w-full left-0 px-2">
-                <span>15:00</span>
-                <span>17:00</span>
-                <span>19:00</span>
-                <span>21:00</span>
-                <span>23:00</span>
-              </div>
-            </div>
+          {/* Low Stock Alerts */}
+          <Card className="shadow-sm border-gray-200">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-gray-100">
+              <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-orange-500" /> Low Stock Alerts
+              </CardTitle>
+              <span className="px-2 py-0.5 rounded bg-red-100 text-red-600 text-[10px] font-bold">8 items</span>
+            </CardHeader>
+            <CardContent className="p-0">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="border-b border-gray-100 text-[10px] uppercase text-gray-400 font-bold bg-gray-50/50">
+                    <th className="px-4 py-3 font-semibold">Item</th>
+                    <th className="px-4 py-3 font-semibold text-center">Current Stock</th>
+                    <th className="px-4 py-3 font-semibold text-right">Threshold</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs font-semibold divide-y divide-gray-100">
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Onion</td>
+                    <td className="px-4 py-3 text-center text-red-500 font-bold">3.5 kg</td>
+                    <td className="px-4 py-3 text-right text-gray-500">5 kg</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Paneer</td>
+                    <td className="px-4 py-3 text-center text-red-500 font-bold">0.8 kg</td>
+                    <td className="px-4 py-3 text-right text-gray-500">2 kg</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Butter</td>
+                    <td className="px-4 py-3 text-center text-red-500 font-bold">1.2 kg</td>
+                    <td className="px-4 py-3 text-right text-gray-500">2 kg</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Coriander</td>
+                    <td className="px-4 py-3 text-center text-red-500 font-bold">0.2 kg</td>
+                    <td className="px-4 py-3 text-right text-gray-500">1 kg</td>
+                  </tr>
+                  <tr className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-gray-900">Cumin</td>
+                    <td className="px-4 py-3 text-center text-red-500 font-bold">0.4 kg</td>
+                    <td className="px-4 py-3 text-right text-gray-500">0.5 kg</td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
           </Card>
         </div>
-      </DashboardLayout>
-    </RoleGuard>
-  );
-}
 
-function ChevronRight({ size = 16, className = "" }: { size?: number, className?: string }) {
-  return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <path d="m9 18 6-6-6-6"/>
-    </svg>
+      </div>
+    </DashboardLayout>
   );
 }
