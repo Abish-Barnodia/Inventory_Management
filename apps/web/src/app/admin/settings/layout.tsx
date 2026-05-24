@@ -10,7 +10,6 @@ import { RoleGuard } from '@/components/auth/role-guard';
 
 const TABS = [
   { name: 'Hotel Profile', href: '/admin/settings/profile', icon: Building2 },
-  { name: 'Inventory Masters', href: '/admin/settings/inventory-masters', icon: Database },
   { name: 'Departments', href: '/admin/settings/departments', icon: Grid },
   { name: 'Users & Roles', href: '/admin/settings/users', icon: Users },
   { name: 'Role Permissions', href: '/admin/settings/permissions', icon: Shield },

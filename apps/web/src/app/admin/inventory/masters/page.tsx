@@ -421,14 +421,10 @@ function InventoryMastersContent() {
   );
 }
 
-export default function InventoryMastersPageWrapper() {
+export default function InventoryMastersPage() {
   return (
     <RoleGuard allowedRoles={['superadmin', 'admin']}>
-      <DashboardLayout>
-        <InventoryProvider>
-          <InventoryMastersContent />
-        </InventoryProvider>
-      </DashboardLayout>
+      <InventoryMastersContent />
     </RoleGuard>
   );
 }

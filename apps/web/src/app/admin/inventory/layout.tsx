@@ -10,6 +10,7 @@ import { InventoryProvider } from './context';
 
 const TABS = [
   { name: 'Overview', href: '/admin/inventory', icon: Package },
+  { name: 'Masters', href: '/admin/inventory/masters', icon: Database },
   { name: 'Stock Data', href: '/admin/inventory/data', icon: Database },
   { name: 'Stock Entries', href: '/admin/inventory/entries', icon: PlusCircle },
   { name: 'Stock Issuances', href: '/admin/inventory/issuances', icon: ArrowRightLeft },
