@@ -124,7 +124,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     const user = await pool.query('SELECT email FROM users WHERE id = $1', [id]);
     const email = user.rows[0]?.email || 'user';
 
-    res.json({ message: \`Password reset email sent to \${email}\` });
+    res.json({ message: `Password reset email sent to ${email}` });
   } catch (error) {
     res.status(500).json({ error: 'Failed to reset password' });
   }
