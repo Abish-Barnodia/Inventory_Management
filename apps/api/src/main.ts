@@ -14,6 +14,10 @@ import { ordersRouter } from './orders/orders.routes';
 import { kotsRouter } from './kots/kots.routes';
 import { financesRouter } from './finances/finances.routes';
 import { inventoryRouter } from './inventory/inventory.routes';
+import { hotelRouter } from './hotel/hotel.routes';
+import { departmentsRouter } from './departments/departments.routes';
+import { usersRouter } from './users/users.routes';
+import { permissionsRouter } from './permissions/permissions.routes';
 
 dotenv.config();
 
@@ -54,6 +58,10 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/kots', kotsRouter);
 app.use('/api/finances', financesRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/hotels', hotelRouter);
+app.use('/api/departments', departmentsRouter);
+app.use('/api/users', usersRouter);
+app.use('/api/permissions', permissionsRouter);
 
 // Basic Root Route
 app.get('/api', (req, res) => {

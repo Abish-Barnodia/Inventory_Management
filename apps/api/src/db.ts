@@ -514,10 +514,25 @@ export async function initializeDatabase(): Promise<void> {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS revenue_ledger (
       id SERIAL PRIMARY KEY,
-      revenue_date DATE NOT NULL,
+      revenue_date DATE NOT NULL UNIQUE,
       gross_revenue NUMERIC(10,2) NOT NULL,
       source VARCHAR,
       batch_id VARCHAR,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE revenue_ledger ADD CONSTRAINT unique_revenue_date UNIQUE (revenue_date);
+  `).catch(e => console.log('UNIQUE constraint may already exist', e.message));
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS revenue_change_log (
+      id SERIAL PRIMARY KEY,
+      revenue_date DATE NOT NULL,
+      old_revenue NUMERIC(10,2) NOT NULL,
+      new_revenue NUMERIC(10,2) NOT NULL,
+      changed_by VARCHAR,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
@@ -530,8 +545,19 @@ export async function initializeDatabase(): Promise<void> {
       vendor_name VARCHAR,
       total_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
       payment_status VARCHAR NOT NULL DEFAULT 'unpaid',
+      batch_upload_id VARCHAR,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await pool.query(`
+    ALTER TABLE expenses 
+      ADD COLUMN IF NOT EXISTS stock_entry_id INTEGER REFERENCES stock_entries(id) ON DELETE CASCADE,
+      ADD COLUMN IF NOT EXISTS batch_upload_id VARCHAR,
+      ADD COLUMN IF NOT EXISTS paid_on TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS metadata JSONB,
+      ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS dept_id VARCHAR;
   `);
 
   await pool.query(`
@@ -553,6 +579,57 @@ export async function initializeDatabase(): Promise<void> {
       item_name VARCHAR NOT NULL,
       quantity_requested INTEGER NOT NULL DEFAULT 0,
       quantity_approved INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hotel_profile (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR NOT NULL DEFAULT 'Grand View Hotel',
+      address TEXT,
+      phone VARCHAR,
+      timezone VARCHAR DEFAULT 'Asia/Kolkata',
+      currency VARCHAR DEFAULT 'INR — Indian Rupee',
+      logo_url TEXT,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // Ensure at least one profile exists
+  await pool.query(`
+    INSERT INTO hotel_profile (id, name, address, phone, timezone, currency)
+    SELECT 1, 'Grand View Hotel', '123, MG Road, Bengaluru, Karnataka — 560001', '+91 98765 43210', 'Asia/Kolkata', 'INR — Indian Rupee'
+    WHERE NOT EXISTS (SELECT 1 FROM hotel_profile WHERE id = 1);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS departments (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR NOT NULL UNIQUE,
+      description TEXT,
+      is_active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await pool.query(`
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS email VARCHAR UNIQUE,
+      ADD COLUMN IF NOT EXISTS phone VARCHAR,
+      ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true,
+      ADD COLUMN IF NOT EXISTS last_login TIMESTAMP,
+      ADD COLUMN IF NOT EXISTS password_is_temporary BOOLEAN NOT NULL DEFAULT false;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS role_permissions (
+      id SERIAL PRIMARY KEY,
+      role VARCHAR NOT NULL,
+      permission_key VARCHAR NOT NULL,
+      is_enabled BOOLEAN NOT NULL DEFAULT false,
+      UNIQUE(role, permission_key)
     );
   `);
 

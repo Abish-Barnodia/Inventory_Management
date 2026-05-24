@@ -15,12 +15,20 @@ export default function AnalyticsPage() {
 
   // State data that will later be populated by API
   const [data, setData] = useState({
-    grossRevenue: 0,
-    purchaseExpenses: 0,
-    fixedExpenses: 0,
-    variableExpenses: 0,
-    netProfit: 0,
-    profitMargin: 0
+    period: 'Daily',
+    dateRange: { start: '', end: '' },
+    metrics: {
+      grossRevenue: 0,
+      totalExpenses: 0,
+      netPnL: 0,
+      marginPercent: 0,
+      costRatioPercent: 0
+    },
+    breakdown: {
+      purchase: 0,
+      fixed: 0,
+      variable: 0
+    }
   });
 
   useEffect(() => {
@@ -38,8 +46,8 @@ export default function AnalyticsPage() {
     }
   };
 
-  // Compute heights for the visual bar chart relative to the highest value (Net Profit = ~47k)
-  const maxVal = Math.max(data.purchaseExpenses, data.fixedExpenses, data.variableExpenses, data.netProfit);
+  // Compute heights for the visual bar chart relative to the highest value
+  const maxVal = Math.max(data.breakdown.purchase, data.breakdown.fixed, data.breakdown.variable, data.metrics.netPnL);
   const getH = (val: number) => `${Math.max((maxVal > 0 ? (val / maxVal) : 0) * 100, 5)}%`;
 
   return (
@@ -103,12 +111,12 @@ export default function AnalyticsPage() {
           <CardContent className="pt-6 space-y-4">
             <div className="flex justify-between items-center text-sm font-medium">
               <span className="text-gray-700">Gross Revenue</span>
-              <span className="text-green-600">₹{data.grossRevenue.toLocaleString('en-IN')}</span>
+              <span className="text-green-600">₹{data.metrics.grossRevenue.toLocaleString('en-IN')}</span>
             </div>
             
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">— Purchase Expenses</span>
-              <span className="text-gray-700">₹{data.purchaseExpenses.toLocaleString('en-IN')}</span>
+              <span className="text-gray-700">₹{data.breakdown.purchase.toLocaleString('en-IN')}</span>
             </div>
             
             <div className="flex justify-between items-center text-sm">
@@ -118,23 +126,23 @@ export default function AnalyticsPage() {
                   <Info className="w-3 h-3" /> prorated
                 </span>
               </span>
-              <span className="text-gray-700">₹{data.fixedExpenses.toLocaleString('en-IN')}</span>
+              <span className="text-gray-700">₹{data.breakdown.fixed.toLocaleString('en-IN')}</span>
             </div>
             
             <div className="flex justify-between items-center text-sm">
               <span className="text-gray-500">— Variable Expenses</span>
-              <span className="text-gray-700">₹{data.variableExpenses.toLocaleString('en-IN')}</span>
+              <span className="text-gray-700">₹{data.breakdown.variable.toLocaleString('en-IN')}</span>
             </div>
 
             <div className="border-t pt-4 mt-2">
               <div className="flex justify-between items-center font-bold text-gray-900">
                 <span>Net Profit</span>
-                <span className="text-green-600">₹{data.netProfit.toLocaleString('en-IN')}</span>
+                <span className="text-green-600">₹{data.metrics.netPnL.toLocaleString('en-IN')}</span>
               </div>
             </div>
 
             <div className="bg-green-100 rounded-lg p-4 text-center mt-4">
-              <span className="block text-2xl font-bold text-green-700">{data.profitMargin}%</span>
+              <span className="block text-2xl font-bold text-green-700">{data.metrics.marginPercent}%</span>
               <span className="text-xs text-green-600 font-medium">Profit Margin</span>
             </div>
           </CardContent>
@@ -153,36 +161,36 @@ export default function AnalyticsPage() {
                 <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">Purchase</span>
                 <div 
                   className="w-full bg-orange-400 rounded-t-md relative group-hover:bg-orange-500 transition-colors" 
-                  style={{ height: getH(data.purchaseExpenses) }}
+                  style={{ height: getH(data.breakdown.purchase) }}
                 ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.purchaseExpenses.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-medium text-gray-600">₹{data.breakdown.purchase.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="flex flex-col items-center gap-2 group w-20">
                 <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">Fixed</span>
                 <div 
                   className="w-full bg-blue-500 rounded-t-md relative group-hover:bg-blue-600 transition-colors" 
-                  style={{ height: getH(data.fixedExpenses) }}
+                  style={{ height: getH(data.breakdown.fixed) }}
                 ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.fixedExpenses.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-medium text-gray-600">₹{data.breakdown.fixed.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="flex flex-col items-center gap-2 group w-20">
                 <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">Variable</span>
                 <div 
                   className="w-full bg-purple-400 rounded-t-md relative group-hover:bg-purple-500 transition-colors" 
-                  style={{ height: getH(data.variableExpenses) }}
+                  style={{ height: getH(data.breakdown.variable) }}
                 ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.variableExpenses.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-medium text-gray-600">₹{data.breakdown.variable.toLocaleString('en-IN')}</span>
               </div>
 
               <div className="flex flex-col items-center gap-2 group w-20">
                 <span className="text-xs text-green-600 font-medium absolute -top-6">Net Profit</span>
                 <div 
                   className="w-full bg-green-500 rounded-t-md relative" 
-                  style={{ height: getH(data.netProfit) }}
+                  style={{ height: getH(data.metrics.netPnL) }}
                 ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.netProfit.toLocaleString('en-IN')}</span>
+                <span className="text-xs font-medium text-gray-600">₹{data.metrics.netPnL.toLocaleString('en-IN')}</span>
               </div>
 
             </div>

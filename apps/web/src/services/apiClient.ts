@@ -21,6 +21,8 @@ apiClient.interceptors.request.use(
 
     // Current backend RBAC accepts ADMIN only.
     config.headers['x-role'] = 'ADMIN';
+    config.headers['x-user-role'] = 'ADMIN'; // For new Finance workflow logic
+    config.headers['x-can-variable-expense'] = 'true';
     return config;
   },
   (error) => {

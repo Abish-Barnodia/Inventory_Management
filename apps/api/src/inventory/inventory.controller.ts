@@ -23,23 +23,35 @@ export const createStockEntry = async (req: Request, res: Response) => {
     const { invoiceNumber, vendorName, totalAmount, paymentStatus, items } = req.body;
 
     const entryResult = await client.query(
-      `INSERT INTO stock_entries (invoice_number, vendor_name, total_amount, payment_status)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
+      `INSERT INTO stock_entries (invoice_number, vendor_name, total_amount, payment_status, batch_upload_id)
+       VALUES ($1, $2, $3, $4, NULL) RETURNING *`,
       [invoiceNumber, vendorName, totalAmount, paymentStatus]
     );
     const entryId = entryResult.rows[0].id;
 
+    // Auto-Capture Purchase Expense (Module 1)
+    await client.query(
+      `INSERT INTO expenses (expense_type, description, category, amount, payment_method, vendor, expense_date, stock_entry_id, batch_upload_id)
+       VALUES ('Purchase', $1, 'Inventory Stock', $2, 'Cash', $3, CURRENT_DATE, $4, NULL)`,
+      [`Purchase Invoice #${invoiceNumber || entryId}`, totalAmount, vendorName || 'Supplier', entryId]
+    );
+
     // items array: { itemName: string, quantity: number }
     if (items && Array.isArray(items)) {
       for (const item of items) {
-        // Here we ideally insert into stock_entry_items, but since we didn't add it in db.ts just for simplicity, 
-        // we'll at least update the main items table.
         await client.query(
           `UPDATE items SET stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE name = $2`,
           [item.quantity, item.itemName]
         );
       }
     }
+
+    // Write Audit Log
+    await client.query(
+      `INSERT INTO audit_log (action, entity_type, entity_id, reason, metadata)
+       VALUES ('CREATE_STOCK_ENTRY', 'stock_entries', $1, 'Single Stock Entry Creation', $2)`,
+      [entryId, JSON.stringify({ invoiceNumber, totalAmount, itemCount: items?.length || 0 })]
+    );
 
     await client.query('COMMIT');
     res.status(201).json(entryResult.rows[0]);
@@ -63,6 +75,8 @@ export const bulkImportStockEntries = async (req: Request, res: Response) => {
     
     const client = await pool.connect();
     let importedCount = 0;
+    const batchUploadId = 'BATCH_' + Date.now();
+    let batchTotal = 0;
     
     try {
       await client.query('BEGIN');
@@ -70,8 +84,28 @@ export const bulkImportStockEntries = async (req: Request, res: Response) => {
       for (const record of records) {
         const itemName = record['Item Name'] || record['item_name'];
         const quantity = Number(record['Quantity'] || record['quantity']);
+        const price = Number(record['Price'] || record['price']) || 0;
+        const totalLineAmount = quantity * price;
         
         if (itemName && quantity > 0) {
+          // Create stock entry per row
+          const entryResult = await client.query(
+            `INSERT INTO stock_entries (invoice_number, vendor_name, total_amount, payment_status, batch_upload_id)
+             VALUES ($1, $2, $3, 'unpaid', $4) RETURNING id`,
+            [`BULK-${batchUploadId}`, 'Bulk Import Vendor', totalLineAmount, batchUploadId]
+          );
+          const entryId = entryResult.rows[0].id;
+
+          // Auto-capture expense per row
+          if (totalLineAmount > 0) {
+            await client.query(
+              `INSERT INTO expenses (expense_type, description, category, amount, payment_method, vendor, expense_date, stock_entry_id, batch_upload_id)
+               VALUES ('Purchase', $1, 'Inventory Stock', $2, 'Cash', 'Bulk Import Vendor', CURRENT_DATE, $3, $4)`,
+              [`Bulk Import: ${itemName}`, totalLineAmount, entryId, batchUploadId]
+            );
+          }
+          batchTotal += totalLineAmount;
+
           // Update item stock directly for bulk import
           await client.query(
             `UPDATE items SET stock_quantity = stock_quantity + $1, updated_at = NOW() WHERE LOWER(name) = LOWER($2)`,
@@ -81,8 +115,15 @@ export const bulkImportStockEntries = async (req: Request, res: Response) => {
         }
       }
 
+      // Write Audit Log for Bulk
+      await client.query(
+        `INSERT INTO audit_log (action, entity_type, entity_id, reason, metadata)
+         VALUES ('BULK_STOCK_ENTRY', 'batch', $1, 'Bulk Stock CSV Upload', $2)`,
+        [batchUploadId, JSON.stringify({ importedCount, batchTotal })]
+      );
+
       await client.query('COMMIT');
-      res.json({ message: 'Bulk import successful', itemsUpdated: importedCount });
+      res.json({ message: 'Bulk import successful', itemsUpdated: importedCount, batchUploadId });
     } catch (dbError) {
       await client.query('ROLLBACK');
       throw dbError;

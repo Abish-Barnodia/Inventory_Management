@@ -8,7 +8,8 @@ import {
   getRevenue,
   getPnLAnalytics,
   importRevenue,
-  generateReport
+  generateReport,
+  cloneFixedExpenses
 } from './finances.controller';
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -18,6 +19,7 @@ export const financesRouter = Router();
 // Expense Routes
 financesRouter.get('/expenses', getExpenses);
 financesRouter.post('/expenses', createExpense);
+financesRouter.post('/expenses/clone', cloneFixedExpenses);
 financesRouter.put('/expenses/:id', updateExpense);
 financesRouter.delete('/expenses/:id', deleteExpense);
 

@@ -31,30 +31,9 @@ const MENU_GROUPS: MenuGroup[] = [
   {
     items: [
       { icon: LayoutDashboard, label: 'Dashboard', href: '/admin/dashboard' },
-    ]
-  },
-  {
-    title: 'Inventory',
-    items: [
       { icon: Package, label: 'Inventory', href: '/admin/inventory' },
-    ]
-  },
-  {
-    title: 'Financials',
-    items: [
       { icon: TrendingDown, label: 'Finances', href: '/admin/finances' },
-    ]
-  },
-
-  {
-    title: 'SETTINGS',
-    items: [
-      { icon: Building2, label: 'Hotel Profile', href: '/admin/settings/profile' },
-      { icon: Database, label: 'Inventory Masters', href: '/admin/settings/inventory-masters' },
-      { icon: Grid, label: 'Departments', href: '/admin/settings/departments' },
-      { icon: Users, label: 'Users & Roles', href: '/admin/settings/users' },
-      { icon: Shield, label: 'Role Permissions', href: '/admin/settings/permissions' },
-      { icon: Bell, label: 'Notifications', href: '/admin/settings/notifications' },
+      { icon: Building2, label: 'Settings', href: '/admin/settings' },
     ]
   }
 ];
