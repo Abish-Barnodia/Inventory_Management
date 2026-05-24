@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './sidebar';
 import { useAuth } from '@/hooks/use-auth';
-import { CalendarDays, Clock, Bell, ChevronDown } from 'lucide-react';
+import { CalendarDays, Clock, Bell, ChevronDown, Menu, X } from 'lucide-react';
 import { FilterProvider, useFilter } from '@/lib/filter-context';
 import { usePathname } from 'next/navigation';
 
@@ -19,7 +19,7 @@ function DateTimeFilter() {
 
   if (!mounted || !filterDate) {
     return (
-      <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-md border border-gray-100">
+      <div className="hidden md:flex items-center bg-gray-50 px-3 py-1.5 rounded-md border border-gray-100">
         <div className="flex items-center gap-1.5 text-sm text-gray-500">
           <CalendarDays size={14} className="text-gray-400" />
           <span className="w-24 h-4 bg-gray-200 rounded animate-pulse" />
@@ -49,7 +49,7 @@ function DateTimeFilter() {
   } catch { displayTime = filterTime; }
 
   return (
-    <div className="flex items-center bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200 shadow-sm">
+    <div className="hidden md:flex items-center bg-gray-50 px-3 py-1.5 rounded-md border border-gray-200 shadow-sm">
       <div
         onClick={() => dateInputRef.current?.showPicker()}
         className="relative flex items-center gap-2 text-sm font-medium text-gray-600 cursor-pointer hover:text-gray-900 transition-colors"
@@ -93,6 +93,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const [expiryCount, setExpiryCount] = useState(0);
   const [expiringItems, setExpiringItems] = useState<any[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const checkExpiries = () => {
@@ -117,15 +123,39 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <FilterProvider>
-      <div className="flex min-h-screen bg-[#F5F7FA] print:hidden font-sans">
-        <Sidebar />
-        <div className="flex-1 flex flex-col">
+      <div className="flex min-h-screen bg-[#F5F7FA] print:hidden font-sans overflow-hidden">
+        
+        {/* Mobile Sidebar Overlay */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Container */}
+        <div className={`fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-auto md:z-auto ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <Sidebar />
+        </div>
+
+        <div className="flex-1 flex flex-col min-w-0">
           {/* ── Top Header Bar ── */}
-          <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-6 shrink-0 shadow-sm relative">
-            {/* Left Breadcrumb */}
-            <div className="text-sm">
-              <span className="text-gray-400 font-medium">Dashboard / </span>
-              <span className="text-gray-700 font-bold">{sectionName}</span>
+          <header className="h-16 border-b border-gray-200 bg-white flex items-center justify-between px-4 md:px-6 shrink-0 shadow-sm relative">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-md"
+              >
+                <Menu size={20} />
+              </button>
+              {/* Left Breadcrumb */}
+              <div className="text-sm hidden sm:block">
+                <span className="text-gray-400 font-medium">Dashboard / </span>
+                <span className="text-gray-700 font-bold">{sectionName}</span>
+              </div>
+              <div className="text-sm sm:hidden font-bold text-gray-700">
+                {sectionName}
+              </div>
             </div>
 
             {/* Right Actions */}
@@ -176,7 +206,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* ── Main Content ── */}
-          <main className="flex-1 p-6 overflow-y-auto">
+          <main className="flex-1 p-4 md:p-6 overflow-y-auto">
             {children}
           </main>
         </div>

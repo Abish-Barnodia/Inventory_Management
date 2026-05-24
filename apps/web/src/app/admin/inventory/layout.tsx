@@ -25,8 +25,8 @@ export default function InventoryLayout({ children }: { children: React.ReactNod
   return (
     <DashboardLayout>
       <InventoryProvider>
-        <div className="-mx-6 -mt-6 px-6 bg-white border-b mb-6 sticky top-0 z-10 shadow-sm">
-          <div className="flex items-center gap-8 overflow-x-auto">
+        <div className="-mx-4 md:-mx-6 -mt-6 px-4 md:px-6 bg-white border-b mb-6 sticky top-0 z-10 shadow-sm">
+          <div className="flex items-center gap-6 md:gap-8 overflow-x-auto scrollbar-hide">
             {TABS.map((tab) => {
               const isActive = pathname === tab.href;
               return (
