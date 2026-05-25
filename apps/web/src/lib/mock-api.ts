@@ -138,15 +138,30 @@ export const mockDb = {
    */
   login: async (email: string, password: string): Promise<{ success: boolean; user?: any }> => {
     await new Promise((resolve) => setTimeout(resolve, 800));
-    // Hardcoded superadmin for now as requested
-    if (email === 'admin@restrobit.com' && password === 'admin123') {
-      const user = { id: 'sa1', name: 'Admin User', role: 'superadmin', email: 'admin@restrobit.com' };
+    
+    let user = null;
+
+    if (email === 'superadmin@restrobit.com' && password === 'super123') {
+      user = { id: 'sa1', name: 'Super Admin', role: 'superadmin', email: 'superadmin@restrobit.com' };
+    } 
+    else if (email === 'admin@restrobit.com' && password === 'admin123') {
+      user = { id: 'a1', name: 'Hotel Admin', role: 'admin', email: 'admin@restrobit.com', hotelId: 'h1' };
+    }
+    else if (email === 'manager@restrobit.com' && password === 'manager123') {
+      user = { id: 'm1', name: 'Store Manager', role: 'manager', email: 'manager@restrobit.com', hotelId: 'h1' };
+    }
+    else if (email === 'staff@restrobit.com' && password === 'staff123') {
+      user = { id: 's1', name: 'Kitchen Staff', role: 'staff', email: 'staff@restrobit.com', hotelId: 'h1' };
+    }
+
+    if (user) {
       if (typeof window !== 'undefined') {
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('token', 'mock-jwt-token');
       }
       return { success: true, user };
     }
+    
     return { success: false };
   },
 
