@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { User as UserIcon, Mail, Phone, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
+import { mockDb } from '@/lib/mock-api';
 
 export default function MyAccountPage() {
   const { user } = useAuth();
@@ -29,17 +30,31 @@ export default function MyAccountPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (user?.name) {
-      setProfile(prev => ({ ...prev, name: user.name }));
+    if (user) {
+      setProfile({
+        name: user.name || 'Admin User',
+        email: user.email || 'admin@grandview.com',
+        phone: user.phone || '+91 98765 43210'
+      });
     }
   }, [user]);
 
   const handleSaveProfile = async () => {
+    if (!user?.id) return;
     setIsSaving(true);
     toast.loading('Saving changes...', { id: 'save-account' });
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await mockDb.updateProfile(user.id, profile.name, profile.phone);
+      
+      // Update local storage so UI doesn't revert on refresh
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        parsed.name = profile.name;
+        parsed.phone = profile.phone;
+        localStorage.setItem('user', JSON.stringify(parsed));
+      }
+      
       toast.success('Profile updated successfully', { id: 'save-account' });
     } catch (error) {
       toast.error('Failed to update profile', { id: 'save-account' });
@@ -49,6 +64,7 @@ export default function MyAccountPage() {
   };
 
   const handleUpdatePassword = async () => {
+    if (!user?.id) return;
     if (!passwords.current || !passwords.new || !passwords.confirm) {
       toast.error('Please fill in all password fields');
       return;
@@ -61,12 +77,11 @@ export default function MyAccountPage() {
 
     toast.loading('Updating password...', { id: 'pwd' });
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await mockDb.updatePassword(user.id, passwords.current, passwords.new);
       toast.success('Password updated successfully', { id: 'pwd' });
       setPasswords({ current: '', new: '', confirm: '' });
-    } catch (error) {
-      toast.error('Failed to update password', { id: 'pwd' });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update password', { id: 'pwd' });
     }
   };
 

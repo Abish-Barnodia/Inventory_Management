@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 
 type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ISSUED' | 'RECEIVED';
 
@@ -75,41 +76,54 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
   const [stockApproved, setStockApproved] = useState<StockApprovedItem[]>([]);
   const [mounted, setMounted] = useState(false);
 
+  const { user, isLoading } = useAuth();
+
   useEffect(() => {
+    if (isLoading || !user) return;
+    
+    const prefix = user.hotelId ? `hotel_${user.hotelId}_` : '';
+
     // Load from local storage or use initial
-    const storedReqs = localStorage.getItem('inventory_requests');
+    const storedReqs = localStorage.getItem(`${prefix}inventory_requests`);
     if (storedReqs) {
       setRequests(JSON.parse(storedReqs));
     } else {
       setRequests(INITIAL_REQUESTS);
     }
 
-    const storedData = localStorage.getItem('inventory_stock_data');
+    const storedData = localStorage.getItem(`${prefix}inventory_stock_data`);
     if (storedData) {
       setStockData(JSON.parse(storedData));
+    } else {
+      setStockData([]);
     }
 
-    const storedKitchenReqs = localStorage.getItem('inventory_kitchen_requests');
+    const storedKitchenReqs = localStorage.getItem(`${prefix}inventory_kitchen_requests`);
     if (storedKitchenReqs) {
       setKitchenRequests(JSON.parse(storedKitchenReqs));
+    } else {
+      setKitchenRequests([]);
     }
 
-    const storedApproved = localStorage.getItem('inventory_stock_approved');
+    const storedApproved = localStorage.getItem(`${prefix}inventory_stock_approved`);
     if (storedApproved) {
       setStockApproved(JSON.parse(storedApproved));
+    } else {
+      setStockApproved([]);
     }
 
     setMounted(true);
-  }, []);
+  }, [user, isLoading]);
 
   useEffect(() => {
-    if (mounted) {
-      localStorage.setItem('inventory_requests', JSON.stringify(requests));
-      localStorage.setItem('inventory_stock_data', JSON.stringify(stockData));
-      localStorage.setItem('inventory_kitchen_requests', JSON.stringify(kitchenRequests));
-      localStorage.setItem('inventory_stock_approved', JSON.stringify(stockApproved));
+    if (mounted && user) {
+      const prefix = user.hotelId ? `hotel_${user.hotelId}_` : '';
+      localStorage.setItem(`${prefix}inventory_requests`, JSON.stringify(requests));
+      localStorage.setItem(`${prefix}inventory_stock_data`, JSON.stringify(stockData));
+      localStorage.setItem(`${prefix}inventory_kitchen_requests`, JSON.stringify(kitchenRequests));
+      localStorage.setItem(`${prefix}inventory_stock_approved`, JSON.stringify(stockApproved));
     }
-  }, [requests, stockData, kitchenRequests, stockApproved, mounted]);
+  }, [requests, stockData, kitchenRequests, stockApproved, mounted, user]);
 
   const approveRequest = (reqId: string, approvedQty: number) => {
     let approvedItem: StockRequest | undefined;

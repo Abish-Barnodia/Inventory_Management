@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Download, BarChart2, DollarSign, Package, FileText, Search } from 'lucide-react';
+import { Download, BarChart2, IndianRupee, Package, FileText, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import apiClient from '@/services/apiClient';
@@ -58,7 +58,7 @@ export default function ReportsPage() {
         <Card className="hover:shadow-md transition-shadow">
           <CardContent className="p-6 space-y-4">
             <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-green-500" />
+              <IndianRupee className="w-5 h-5 text-green-500" />
             </div>
             <div>
               <h3 className="font-semibold text-gray-900">Expense Report</h3>

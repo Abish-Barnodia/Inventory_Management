@@ -2,6 +2,7 @@
  * Mock API Service for FINBOOKS.
  * Simulates database interactions to fulfill "no hardcoded content" and "dynamic from DB" rules.
  */
+import apiClient from '../services/apiClient';
 
 export interface DashboardMetrics {
   totalSales: number;
@@ -132,37 +133,51 @@ export const mockDb = {
     await new Promise((resolve) => setTimeout(resolve, 600));
     return MOCK_USERS;
   },
-
   /**
    * Simulates email/password login.
    */
   login: async (email: string, password: string): Promise<{ success: boolean; user?: any }> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    
-    let user = null;
-
-    if (email === 'superadmin@restrobit.com' && password === 'super123') {
-      user = { id: 'sa1', name: 'Super Admin', role: 'superadmin', email: 'superadmin@restrobit.com' };
-    } 
-    else if (email === 'admin@restrobit.com' && password === 'admin123') {
-      user = { id: 'a1', name: 'Hotel Admin', role: 'admin', email: 'admin@restrobit.com', hotelId: 'h1' };
-    }
-    else if (email === 'manager@restrobit.com' && password === 'manager123') {
-      user = { id: 'm1', name: 'Store Manager', role: 'manager', email: 'manager@restrobit.com', hotelId: 'h1' };
-    }
-    else if (email === 'staff@restrobit.com' && password === 'staff123') {
-      user = { id: 's1', name: 'Kitchen Staff', role: 'staff', email: 'staff@restrobit.com', hotelId: 'h1' };
-    }
-
-    if (user) {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('user', JSON.stringify(user));
-        localStorage.setItem('token', 'mock-jwt-token');
+    // Fallback to real backend authentication
+    try {
+      const response = await apiClient.post('/auth/login', { email, password });
+      if (response.data?.success && response.data?.user) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(response.data.user));
+          localStorage.setItem('token', 'mock-jwt-token');
+        }
+        return { success: true, user: response.data.user };
       }
-      return { success: true, user };
+    } catch (error) {
+      console.log('Backend auth failed:', error);
     }
     
     return { success: false };
+  },
+
+  /**
+   * Updates user profile
+   */
+  updateProfile: async (userId: string, name: string, phone: string) => {
+    try {
+      const response = await apiClient.patch('/auth/update-profile', { userId, name, phone });
+      return response.data;
+    } catch (error) {
+      console.error('Update profile error:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Updates user password
+   */
+  updatePassword: async (userId: string, currentPassword: string, newPassword: string) => {
+    try {
+      const response = await apiClient.patch('/auth/update-password', { userId, currentPassword, newPassword });
+      return response.data;
+    } catch (error: any) {
+      console.error('Update password error:', error);
+      throw new Error(error.response?.data?.message || 'Failed to update password');
+    }
   },
 
   /**
@@ -185,10 +200,11 @@ export const mockDb = {
    * Simulates a check for the current user's session and role.
    */
   getCurrentUser: async () => {
-    await new Promise((resolve) => setTimeout(resolve, 300));
     if (typeof window !== 'undefined') {
-      const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
+      const user = localStorage.getItem('user');
+      if (user) {
+        return JSON.parse(user);
+      }
     }
     return null;
   },

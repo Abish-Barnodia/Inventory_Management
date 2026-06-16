@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Search, AlertTriangle, Settings2, BellRing, PackageSearch, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { useInventory } from './context';
+import { useAuth } from '@/hooks/use-auth';
 
 type InventoryItem = {
   id: string;
@@ -38,12 +39,16 @@ export default function InventoryOverviewPage() {
   const [alertOpen, setAlertOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [newThreshold, setNewThreshold] = useState('');
+  const { user } = useAuth();
+  
+  const prefix = user?.hotelId ? `hotel_${user.hotelId}_` : '';
 
   // Load thresholds
   React.useEffect(() => {
-    const stored = localStorage.getItem('inventory_thresholds');
+    if (!user) return;
+    const stored = localStorage.getItem(`${prefix}inventory_thresholds`);
     if (stored) setThresholds(JSON.parse(stored));
-  }, []);
+  }, [user]);
 
   const handleSaveThreshold = () => {
     if (!selectedItem) return;
@@ -58,7 +63,7 @@ export default function InventoryOverviewPage() {
     }
     
     setThresholds(updated);
-    localStorage.setItem('inventory_thresholds', JSON.stringify(updated));
+    localStorage.setItem(`${prefix}inventory_thresholds`, JSON.stringify(updated));
 
     toast.success('Low stock alert threshold updated successfully.');
     setAlertOpen(false);

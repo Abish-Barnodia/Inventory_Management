@@ -23,6 +23,20 @@ apiClient.interceptors.request.use(
     config.headers['x-role'] = 'ADMIN';
     config.headers['x-user-role'] = 'ADMIN'; // For new Finance workflow logic
     config.headers['x-can-variable-expense'] = 'true';
+    
+    if (typeof window !== 'undefined') {
+      try {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          if (user.hotelId) {
+            config.headers['x-hotel-id'] = user.hotelId;
+          }
+        }
+      } catch (e) {
+        // Ignore parse error
+      }
+    }
     return config;
   },
   (error) => {

@@ -3,13 +3,11 @@
   "version": "0.0.0",
   "license": "MIT",
   "private": true,
-
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
   },
-
   "devDependencies": {
     "@nx/esbuild": "^22.6.5",
     "@nx/eslint": "^22.6.5",
@@ -17,18 +15,15 @@
     "@nx/next": "^22.6.5",
     "@nx/node": "^22.6.5",
     "@nx/workspace": "22.6.5",
-
     "@swc-node/register": "^1.11.1",
     "@swc/cli": "~0.8.0",
     "@swc/core": "^1.15.30",
     "@swc/helpers": "~0.5.18",
-
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.19.9",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-
     "autoprefixer": "10.4.13",
     "esbuild": "^0.27.0",
     "nx": "22.6.5",
@@ -38,7 +33,6 @@
     "tslib": "^2.3.0",
     "typescript": "^5.9.3"
   },
-
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-dialog": "^1.1.15",
@@ -47,22 +41,17 @@
     "@radix-ui/react-select": "^2.1.2",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-tabs": "^1.1.1",
-
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-
     "lucide-react": "^1.8.0",
     "mongoose": "^8.18.0",
-
     "next": "^15.0.0",
-
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-
+    "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7"
   }

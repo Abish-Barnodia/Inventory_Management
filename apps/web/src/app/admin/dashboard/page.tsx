@@ -1,30 +1,53 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { DashboardLayout } from '@/components/layout/dashboard-layout';
+import { dashboardApi } from '@/lib/api';
 import { 
   Banknote, 
   BarChart3, 
   Package, 
   ClipboardList, 
   AlertTriangle,
-  Plus,
-  Download,
-  Upload,
-  ArrowUp,
-  CreditCard,
-  FileText
+  Loader2
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        const result = await dashboardApi.getMetrics();
+        if (result.success) {
+          setData(result.data);
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard metrics:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchMetrics();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex h-full items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   const statCards = [
     {
       title: "TODAY'S REVENUE",
-      value: "₹84,500",
-      subtext: "↑ 12% vs yesterday",
+      value: `₹${(data?.today_revenue || 0).toLocaleString()}`,
+      subtext: "Total collected today",
       subtextColor: "text-green-500",
       icon: Banknote,
       iconColor: "text-green-500",
@@ -33,9 +56,9 @@ export default function AdminDashboardPage() {
     },
     {
       title: "THIS MONTH'S P&L",
-      value: "₹7.7L",
+      value: `₹${(data?.month_pl || 0).toLocaleString()}`,
       subtext: "Net profit MTD",
-      subtextColor: "text-gray-400",
+      subtextColor: (data?.month_pl || 0) >= 0 ? "text-green-500" : "text-red-500",
       icon: BarChart3,
       iconColor: "text-blue-500",
       iconBg: "bg-blue-100",
@@ -43,7 +66,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: "INVENTORY ITEMS",
-      value: "142",
+      value: `${data?.in_stock_items || 0}`,
       subtext: "Items with stock > 0",
       subtextColor: "text-gray-400",
       icon: Package,
@@ -53,7 +76,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: "PENDING REQUESTS",
-      value: "5",
+      value: `${data?.pending_requests || 0}`,
       subtext: "Awaiting approval",
       subtextColor: "text-gray-400",
       valueColor: "text-yellow-600",
@@ -64,7 +87,7 @@ export default function AdminDashboardPage() {
     },
     {
       title: "LOW STOCK ALERTS",
-      value: "8",
+      value: `${data?.low_stock_count || 0}`,
       subtext: "Items below threshold",
       subtextColor: "text-gray-400",
       valueColor: "text-red-500",
@@ -97,21 +120,7 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
-            <Plus className="w-4 h-4 mr-2 text-purple-600 stroke-[3]" /> Add Stock Entry
-          </Button>
-          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
-            <CreditCard className="w-4 h-4 mr-2 text-green-600 stroke-[3]" /> Add Expense
-          </Button>
-          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
-            <Download className="w-4 h-4 mr-2 text-blue-600 stroke-[3]" /> Import POS Report
-          </Button>
-          <Button variant="outline" className="bg-white hover:bg-gray-50 border-gray-200 text-gray-700 font-semibold shadow-sm h-10 px-4 rounded-lg">
-            <Upload className="w-4 h-4 mr-2 text-red-500 stroke-[3]" /> Export Report
-          </Button>
-        </div>
+
 
         <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
           {/* P&L Trend Chart */}
@@ -172,46 +181,32 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-5 mt-2">
-                {/* Veggies */}
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="w-24 text-gray-500">Vegetables</span>
-                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-[#f97316] h-full rounded-full" style={{ width: '85%' }}></div>
-                  </div>
-                  <span className="w-16 text-right text-gray-800">₹43,200</span>
-                </div>
-                {/* Dairy */}
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="w-24 text-gray-500">Dairy</span>
-                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-[#3b82f6] h-full rounded-full" style={{ width: '70%' }}></div>
-                  </div>
-                  <span className="w-16 text-right text-gray-800">₹35,600</span>
-                </div>
-                {/* Meat */}
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="w-24 text-gray-500">Meat</span>
-                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-[#8b5cf6] h-full rounded-full" style={{ width: '60%' }}></div>
-                  </div>
-                  <span className="w-16 text-right text-gray-800">₹28,900</span>
-                </div>
-                {/* Dry Goods */}
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="w-24 text-gray-500">Dry Goods</span>
-                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-[#eab308] h-full rounded-full" style={{ width: '40%' }}></div>
-                  </div>
-                  <span className="w-16 text-right text-gray-800">₹19,800</span>
-                </div>
-                {/* Beverages */}
-                <div className="flex items-center justify-between text-xs font-semibold">
-                  <span className="w-24 text-gray-500">Beverages</span>
-                  <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-[#10b981] h-full rounded-full" style={{ width: '25%' }}></div>
-                  </div>
-                  <span className="w-16 text-right text-gray-800">₹12,400</span>
-                </div>
+                {data?.top_expenses?.length > 0 ? (
+                  data.top_expenses.map((expense: any, idx: number) => {
+                    const colors = [
+                      { bg: 'bg-[#f97316]' },
+                      { bg: 'bg-[#3b82f6]' },
+                      { bg: 'bg-[#8b5cf6]' },
+                      { bg: 'bg-[#eab308]' },
+                      { bg: 'bg-[#10b981]' }
+                    ];
+                    const color = colors[idx % colors.length];
+                    const maxExpense = Math.max(...data.top_expenses.map((e: any) => e.total));
+                    const percentage = maxExpense > 0 ? (expense.total / maxExpense) * 100 : 0;
+                    
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-xs font-semibold">
+                        <span className="w-24 text-gray-500 truncate">{expense.category}</span>
+                        <div className="flex-1 mx-3 bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                          <div className={`${color.bg} h-full rounded-full`} style={{ width: `${percentage}%` }}></div>
+                        </div>
+                        <span className="w-16 text-right text-gray-800">₹{expense.total.toLocaleString()}</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-center text-sm text-gray-400 py-4">No expense data for this month</div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -238,61 +233,44 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="text-xs font-semibold text-gray-700 divide-y divide-gray-100">
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Rice</td>
-                    <td className="px-4 py-3">Main Kitchen</td>
-                    <td className="px-4 py-3 text-center">10 kg</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
-                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pending
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400">2 hrs ago</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Tomatoes</td>
-                    <td className="px-4 py-3">Tea Stall</td>
-                    <td className="px-4 py-3 text-center">5 kg</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-200">
-                        ✓ Approved
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400">4 hrs ago</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Milk</td>
-                    <td className="px-4 py-3">Bakery</td>
-                    <td className="px-4 py-3 text-center">20 L</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
-                        <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pending
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400">5 hrs ago</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Sugar</td>
-                    <td className="px-4 py-3">Main Kitchen</td>
-                    <td className="px-4 py-3 text-center">2 kg</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
-                        ✓ Issued
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400">Yesterday</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Oil</td>
-                    <td className="px-4 py-3">Tea Stall</td>
-                    <td className="px-4 py-3 text-center">5 L</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
-                        ✕ Rejected
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-gray-400">Yesterday</td>
-                  </tr>
+                  {data?.recent_requests?.length > 0 ? (
+                    data.recent_requests.map((req: any) => (
+                      <tr key={req.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-900">{req.item_name}</td>
+                        <td className="px-4 py-3">{req.department_name}</td>
+                        <td className="px-4 py-3 text-center">{req.quantity} {req.unit || ''}</td>
+                        <td className="px-4 py-3 text-center">
+                          {req.status === 'pending' && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-yellow-50 text-yellow-600 border border-yellow-200">
+                              <div className="w-1.5 h-1.5 rounded-full bg-yellow-500"></div> Pending
+                            </span>
+                          )}
+                          {req.status === 'approved' && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-200">
+                              ✓ Approved
+                            </span>
+                          )}
+                          {req.status === 'issued' && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-green-50 text-green-600 border border-green-200">
+                              ✓ Issued
+                            </span>
+                          )}
+                          {req.status === 'rejected' && (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
+                              ✕ Rejected
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right text-gray-400">
+                          {new Date(req.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No recent requests</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </CardContent>
@@ -304,7 +282,7 @@ export default function AdminDashboardPage() {
               <CardTitle className="text-sm font-bold text-gray-800 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-orange-500" /> Low Stock Alerts
               </CardTitle>
-              <span className="px-2 py-0.5 rounded bg-red-100 text-red-600 text-[10px] font-bold">8 items</span>
+              <span className="px-2 py-0.5 rounded bg-red-100 text-red-600 text-[10px] font-bold">{data?.low_stock_count || 0} items</span>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-left text-sm whitespace-nowrap">
@@ -316,31 +294,19 @@ export default function AdminDashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="text-xs font-semibold divide-y divide-gray-100">
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Onion</td>
-                    <td className="px-4 py-3 text-center text-red-500 font-bold">3.5 kg</td>
-                    <td className="px-4 py-3 text-right text-gray-500">5 kg</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Paneer</td>
-                    <td className="px-4 py-3 text-center text-red-500 font-bold">0.8 kg</td>
-                    <td className="px-4 py-3 text-right text-gray-500">2 kg</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Butter</td>
-                    <td className="px-4 py-3 text-center text-red-500 font-bold">1.2 kg</td>
-                    <td className="px-4 py-3 text-right text-gray-500">2 kg</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Coriander</td>
-                    <td className="px-4 py-3 text-center text-red-500 font-bold">0.2 kg</td>
-                    <td className="px-4 py-3 text-right text-gray-500">1 kg</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-gray-900">Cumin</td>
-                    <td className="px-4 py-3 text-center text-red-500 font-bold">0.4 kg</td>
-                    <td className="px-4 py-3 text-right text-gray-500">0.5 kg</td>
-                  </tr>
+                  {data?.low_stock_items?.length > 0 ? (
+                    data.low_stock_items.map((item: any, idx: number) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-900">{item.name}</td>
+                        <td className="px-4 py-3 text-center text-red-500 font-bold">{item.current_stock} {item.unit || ''}</td>
+                        <td className="px-4 py-3 text-right text-gray-500">{item.minimum_stock} {item.unit || ''}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-6 text-center text-gray-400">No items are low on stock</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </CardContent>

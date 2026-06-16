@@ -18,6 +18,9 @@ import { hotelRouter } from './hotel/hotel.routes';
 import { departmentsRouter } from './departments/departments.routes';
 import { usersRouter } from './users/users.routes';
 import { permissionsRouter } from './permissions/permissions.routes';
+import { superadminRouter } from './superadmin/superadmin.routes';
+import { authRouter } from './auth/auth.routes';
+import { dashboardRouter } from './dashboard/dashboard.routes';
 
 dotenv.config();
 
@@ -46,6 +49,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.use('/api/auth', authRouter);
+
 app.use('/api', requireAdminRole);
 
 app.use('/api/items', itemsRouter);
@@ -62,6 +67,8 @@ app.use('/api/hotels', hotelRouter);
 app.use('/api/departments', departmentsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/permissions', permissionsRouter);
+app.use('/api/v1/admin', superadminRouter);
+app.use('/api/dashboard', dashboardRouter);
 
 // Basic Root Route
 app.get('/api', (req, res) => {

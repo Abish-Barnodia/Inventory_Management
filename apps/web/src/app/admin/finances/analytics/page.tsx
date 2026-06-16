@@ -7,6 +7,7 @@ import { Download, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import apiClient from '@/services/apiClient';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState('Daily');
@@ -46,9 +47,12 @@ export default function AnalyticsPage() {
     }
   };
 
-  // Compute heights for the visual bar chart relative to the highest value
-  const maxVal = Math.max(data.breakdown.purchase, data.breakdown.fixed, data.breakdown.variable, data.metrics.netPnL);
-  const getH = (val: number) => `${Math.max((maxVal > 0 ? (val / maxVal) : 0) * 100, 5)}%`;
+  const chartData = [
+    { name: 'Purchase', amount: data.breakdown.purchase, color: '#f97316' },
+    { name: 'Fixed', amount: data.breakdown.fixed, color: '#3b82f6' },
+    { name: 'Variable', amount: data.breakdown.variable, color: '#a855f7' },
+    { name: 'Net Profit', amount: data.metrics.netPnL, color: data.metrics.netPnL >= 0 ? '#22c55e' : '#ef4444' }
+  ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12">
@@ -154,46 +158,29 @@ export default function AnalyticsPage() {
             <CardTitle className="text-base font-semibold">Expense Breakdown by Category</CardTitle>
           </CardHeader>
           <CardContent className="pt-12 pb-6 px-8 flex justify-center items-end h-[320px] relative">
-            {/* Simple CSS Chart */}
-            <div className="flex items-end justify-center gap-8 w-full h-full relative border-b border-gray-200">
-              
-              <div className="flex flex-col items-center gap-2 group w-20">
-                <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">Purchase</span>
-                <div 
-                  className="w-full bg-orange-400 rounded-t-md relative group-hover:bg-orange-500 transition-colors" 
-                  style={{ height: getH(data.breakdown.purchase) }}
-                ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.breakdown.purchase.toLocaleString('en-IN')}</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-2 group w-20">
-                <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">Fixed</span>
-                <div 
-                  className="w-full bg-blue-500 rounded-t-md relative group-hover:bg-blue-600 transition-colors" 
-                  style={{ height: getH(data.breakdown.fixed) }}
-                ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.breakdown.fixed.toLocaleString('en-IN')}</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-2 group w-20">
-                <span className="text-xs text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity absolute -top-6">Variable</span>
-                <div 
-                  className="w-full bg-purple-400 rounded-t-md relative group-hover:bg-purple-500 transition-colors" 
-                  style={{ height: getH(data.breakdown.variable) }}
-                ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.breakdown.variable.toLocaleString('en-IN')}</span>
-              </div>
-
-              <div className="flex flex-col items-center gap-2 group w-20">
-                <span className="text-xs text-green-600 font-medium absolute -top-6">Net Profit</span>
-                <div 
-                  className="w-full bg-green-500 rounded-t-md relative" 
-                  style={{ height: getH(data.metrics.netPnL) }}
-                ></div>
-                <span className="text-xs font-medium text-gray-600">₹{data.metrics.netPnL.toLocaleString('en-IN')}</span>
-              </div>
-
-            </div>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6b7280', fontSize: 12 }} dy={10} />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  tickFormatter={(value) => `₹${value}`}
+                  dx={-10}
+                />
+                <Tooltip 
+                  cursor={{ fill: '#f3f4f6' }}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  formatter={(value: any) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']}
+                />
+                <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>

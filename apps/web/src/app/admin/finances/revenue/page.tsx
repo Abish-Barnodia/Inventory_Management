@@ -13,6 +13,7 @@ export default function RevenuePage() {
   const [summary, setSummary] = useState({ thisMonth: 0, ytd: 0 });
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [filterType, setFilterType] = useState('All');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -152,29 +153,66 @@ export default function RevenuePage() {
         <div className="p-4 border-b flex justify-between items-center bg-gray-50/50">
           <h3 className="font-semibold text-gray-800">Revenue Ledger</h3>
           
-          <div className="flex gap-2">
-            <div className="flex items-center gap-2 text-sm border rounded-md bg-white hover:bg-gray-50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-              <div className="pl-3 py-2 flex items-center">
-                <CalendarIcon className="w-4 h-4 text-gray-400" />
-              </div>
+          <div className="flex gap-2 items-center">
+            <select 
+              className="h-10 px-3 border rounded-md bg-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={filterType}
+              onChange={(e) => {
+                setFilterType(e.target.value);
+                setStartDate('');
+                setEndDate('');
+              }}
+            >
+              <option value="All">All Time</option>
+              <option value="Monthly">Monthly</option>
+              <option value="Datewise">Date Range</option>
+            </select>
+
+            {filterType === 'Monthly' && (
               <input 
-                type="date" 
-                className="border-0 shadow-none h-10 px-2 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent min-w-[120px] outline-none" 
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                type="month" 
+                className="h-10 px-3 border rounded-md bg-white text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onChange={(e) => {
+                  if (e.target.value) {
+                    const year = e.target.value.split('-')[0];
+                    const month = e.target.value.split('-')[1];
+                    setStartDate(`${year}-${month}-01`);
+                    const lastDay = new Date(Number(year), Number(month), 0).getDate();
+                    setEndDate(`${year}-${month}-${lastDay}`);
+                  } else {
+                    setStartDate('');
+                    setEndDate('');
+                  }
+                }}
               />
-            </div>
-            <div className="flex items-center gap-2 text-sm border rounded-md bg-white hover:bg-gray-50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
-              <div className="pl-3 py-2 flex items-center">
-                <CalendarIcon className="w-4 h-4 text-gray-400" />
-              </div>
-              <input 
-                type="date" 
-                className="border-0 shadow-none h-10 px-2 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent min-w-[120px] outline-none" 
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
+            )}
+
+            {filterType === 'Datewise' && (
+              <>
+                <div className="flex items-center gap-2 text-sm border rounded-md bg-white hover:bg-gray-50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                  <div className="pl-3 py-2 flex items-center">
+                    <CalendarIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <input 
+                    type="date" 
+                    className="border-0 shadow-none h-10 px-2 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent min-w-[120px] outline-none" 
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2 text-sm border rounded-md bg-white hover:bg-gray-50 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                  <div className="pl-3 py-2 flex items-center">
+                    <CalendarIcon className="w-4 h-4 text-gray-400" />
+                  </div>
+                  <input 
+                    type="date" 
+                    className="border-0 shadow-none h-10 px-2 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent min-w-[120px] outline-none" 
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
         

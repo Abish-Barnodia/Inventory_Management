@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 
 interface LoginFormProps {
   className?: string;
-  onSuccess?: () => void;
+  onSuccess?: (user: any) => void;
 }
 
 export function LoginForm({ className, onSuccess }: LoginFormProps) {
@@ -28,9 +28,9 @@ export function LoginForm({ className, onSuccess }: LoginFormProps) {
     setError(null);
 
     try {
-      const success = await loginAction(email, password);
-      if (success) {
-        if (onSuccess) onSuccess();
+      const result = await loginAction(email, password);
+      if (result.success) {
+        if (onSuccess) onSuccess(result.user);
       } else {
         setError('Invalid credentials. Please try again.');
       }

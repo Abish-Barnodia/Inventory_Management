@@ -101,9 +101,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [pathname]);
 
   useEffect(() => {
+    if (!user) return;
+    const prefix = user.hotelId ? `hotel_${user.hotelId}_` : '';
     const checkExpiries = () => {
       try {
-        const stored = localStorage.getItem('inventory_stock_data');
+        const stored = localStorage.getItem(`${prefix}inventory_stock_data`);
         if (stored) {
           const data = JSON.parse(stored);
           const expiring = data.filter((item: any) => {
@@ -119,7 +121,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     checkExpiries();
     const interval = setInterval(checkExpiries, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   return (
     <FilterProvider>

@@ -43,15 +43,28 @@ export async function initializeDatabase(): Promise<void> {
       id SERIAL PRIMARY KEY,
       username VARCHAR NOT NULL UNIQUE,
       display_name VARCHAR NOT NULL,
+      email VARCHAR UNIQUE,
+      password VARCHAR,
       role VARCHAR NOT NULL DEFAULT 'ADMIN',
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
 
   await pool.query(`
-    INSERT INTO users (username, display_name, role)
-    VALUES ('system_admin', 'System Admin', 'ADMIN')
-    ON CONFLICT (username) DO NOTHING;
+    ALTER TABLE users
+      ADD COLUMN IF NOT EXISTS email VARCHAR UNIQUE,
+      ADD COLUMN IF NOT EXISTS password VARCHAR;
+  `);
+
+  await pool.query(`
+    INSERT INTO users (username, display_name, email, password, role)
+    VALUES 
+      ('system_admin', 'Super Admin', 'superadmin@restrobit.com', 'super123', 'superadmin'),
+      ('admin', 'Admin User', 'admin@restrobit.com', 'admin123', 'admin')
+    ON CONFLICT (username) DO UPDATE 
+    SET password = EXCLUDED.password, 
+        email = EXCLUDED.email, 
+        role = EXCLUDED.role;
   `);
 
   await pool.query(`
@@ -275,6 +288,16 @@ export async function initializeDatabase(): Promise<void> {
   } catch (e: any) {
     console.warn('kot_status served ALTER skipped:', e.message);
   }
+
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status_enum') THEN
+        CREATE TYPE order_status_enum AS ENUM ('open', 'completed', 'cancelled', 'billed');
+      END IF;
+    END
+    $$;
+  `);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS orders (
@@ -583,6 +606,38 @@ export async function initializeDatabase(): Promise<void> {
   `);
 
   await pool.query(`
+    DO $$ 
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'hotel_status') THEN
+        CREATE TYPE hotel_status AS ENUM ('active', 'suspended', 'deactivated');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'subscription_plan') THEN
+        CREATE TYPE subscription_plan AS ENUM ('free_trial', 'basic', 'premium', 'enterprise');
+      END IF;
+    END $$;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS hotels (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR NOT NULL,
+      address TEXT,
+      phone VARCHAR,
+      owner_name VARCHAR NOT NULL,
+      owner_email VARCHAR UNIQUE NOT NULL,
+      owner_password VARCHAR NOT NULL DEFAULT 'admin123',
+      subscription_plan subscription_plan NOT NULL DEFAULT 'free_trial',
+      subscription_expires_at TIMESTAMP,
+      status hotel_status NOT NULL DEFAULT 'active',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query(`
+    ALTER TABLE hotels ADD COLUMN IF NOT EXISTS owner_password VARCHAR NOT NULL DEFAULT 'admin123';
+  `);
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS hotel_profile (
       id SERIAL PRIMARY KEY,
       name VARCHAR NOT NULL DEFAULT 'Grand View Hotel',
@@ -614,8 +669,14 @@ export async function initializeDatabase(): Promise<void> {
   `);
 
   await pool.query(`
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS hotel_id INTEGER REFERENCES hotels(id) ON DELETE SET NULL;
+    ALTER TABLE revenue_ledger ADD COLUMN IF NOT EXISTS hotel_id INTEGER REFERENCES hotels(id) ON DELETE SET NULL;
+    ALTER TABLE stock_entries ADD COLUMN IF NOT EXISTS hotel_id INTEGER REFERENCES hotels(id) ON DELETE SET NULL;
+    ALTER TABLE stock_requests ADD COLUMN IF NOT EXISTS hotel_id INTEGER REFERENCES hotels(id) ON DELETE SET NULL;
+  `);
+
+  await pool.query(`
     ALTER TABLE users
-      ADD COLUMN IF NOT EXISTS email VARCHAR UNIQUE,
       ADD COLUMN IF NOT EXISTS phone VARCHAR,
       ADD COLUMN IF NOT EXISTS department_id INTEGER REFERENCES departments(id) ON DELETE SET NULL,
       ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true,
@@ -624,13 +685,72 @@ export async function initializeDatabase(): Promise<void> {
   `);
 
   await pool.query(`
-    CREATE TABLE IF NOT EXISTS role_permissions (
+    CREATE TABLE IF NOT EXISTS audit_logs (
       id SERIAL PRIMARY KEY,
-      role VARCHAR NOT NULL,
-      permission_key VARCHAR NOT NULL,
-      is_enabled BOOLEAN NOT NULL DEFAULT false,
-      UNIQUE(role, permission_key)
+      hotel_id INTEGER REFERENCES hotels(id) ON DELETE SET NULL,
+      actor VARCHAR(255) NOT NULL,
+      action VARCHAR(50) NOT NULL,
+      resource_type VARCHAR(50) NOT NULL,
+      details TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS platform_settings (
+      id SERIAL PRIMARY KEY,
+      from_name VARCHAR NOT NULL DEFAULT 'Blizz Books',
+      from_email VARCHAR NOT NULL DEFAULT 'noreply@blizzbooks.io',
+      reply_to VARCHAR NOT NULL DEFAULT 'support@blizzbooks.io',
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await pool.query(`
+    INSERT INTO platform_settings (id) 
+    SELECT 1 
+    WHERE NOT EXISTS (SELECT 1 FROM platform_settings WHERE id = 1);
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS default_payment_methods (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR NOT NULL UNIQUE,
+      refs_count INTEGER DEFAULT 0
+    );
+  `);
+
+  await pool.query(`
+    INSERT INTO default_payment_methods (name, refs_count)
+    VALUES 
+      ('Cash', 0),
+      ('UPI', 0),
+      ('Online Transfer', 0),
+      ('Cheque', 0),
+      ('Card', 0),
+      ('Credit', 0)
+    ON CONFLICT (name) DO NOTHING;
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS default_units (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR NOT NULL UNIQUE,
+      symbol VARCHAR NOT NULL,
+      type VARCHAR NOT NULL
+    );
+  `);
+
+  await pool.query(`
+    INSERT INTO default_units (name, symbol, type)
+    VALUES 
+      ('Kilogram', 'kg', 'weight'),
+      ('Gram', 'g', 'weight'),
+      ('Litre', 'L', 'volume'),
+      ('Millilitre', 'mL', 'volume'),
+      ('Pieces', 'pcs', 'count'),
+      ('Pack', 'pack', 'count')
+    ON CONFLICT (name) DO NOTHING;
   `);
 
   console.log('Table management schema migrations complete.');

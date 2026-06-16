@@ -6,8 +6,12 @@ import { mockDb } from '@/lib/mock-api';
 export type Role = 'superadmin' | 'admin' | 'staff' | 'manager' | null;
 
 interface User {
+  id: string;
   name: string;
   role: Role;
+  email?: string;
+  phone?: string;
+  hotelId?: string;
 }
 
 /**
@@ -38,9 +42,9 @@ export function useAuth() {
     const result = await mockDb.login(email, password);
     if (result.success) {
       setUser(result.user);
-      return true;
+      return { success: true, user: result.user };
     }
-    return false;
+    return { success: false };
   };
 
   const logout = () => {

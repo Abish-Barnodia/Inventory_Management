@@ -11,10 +11,16 @@ export const getExpenses = async (req: Request, res: Response) => {
     const { startDate, endDate, type, category, paymentMethod, search } = req.query;
     const userRole = req.headers['x-user-role'] as string;
     const userDept = req.headers['x-user-dept'] as string;
+    const hotelId = req.headers['x-hotel-id'] as string;
 
     let query = 'SELECT * FROM expenses WHERE 1=1';
     const params: any[] = [];
     let paramIndex = 1;
+
+    if (hotelId && hotelId !== 'all') {
+      query += ` AND hotel_id = $${paramIndex++}`;
+      params.push(hotelId);
+    }
 
     // Module 3: Dept Manager Scoping for Variable Expenses (and in general)
     if (userRole === 'Dept Manager' && userDept) {
@@ -96,6 +102,7 @@ export const createExpense = async (req: Request, res: Response) => {
     const { type, description, category, amount, paymentMethod, vendor, date, salaryDetails, forceFuture, deptId } = req.body;
     const userRole = req.headers['x-user-role'] as string;
     const userDept = req.headers['x-user-dept'] as string;
+    const hotelId = req.headers['x-hotel-id'] as string;
     const canVariable = req.headers['x-can-variable-expense'] as string; // Feature flag
 
     if (Number(amount) <= 0) {
@@ -148,10 +155,10 @@ export const createExpense = async (req: Request, res: Response) => {
     }
 
     const query = `
-      INSERT INTO expenses (expense_type, description, category, amount, payment_method, vendor, expense_date, metadata, dept_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+      INSERT INTO expenses (expense_type, description, category, amount, payment_method, vendor, expense_date, metadata, dept_id, hotel_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *
     `;
-    const params = [type, description, category, amount, paymentMethod, vendor, date, metadata, finalDeptId];
+    const params = [type, description, category, amount, paymentMethod, vendor, date, metadata, finalDeptId, hotelId || null];
 
     const result = await client.query(query, params);
     const expenseId = result.rows[0].id;
@@ -296,21 +303,49 @@ export const deleteExpense = async (req: Request, res: Response) => {
 export const getRevenue = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
+    const hotelId = req.headers['x-hotel-id'] as string;
     
-    let query = 'SELECT * FROM revenue_ledger WHERE 1=1';
+    let ledgerQuery = 'SELECT id, revenue_date, gross_revenue, source, batch_id FROM revenue_ledger WHERE 1=1';
+    let billsQuery = "SELECT MIN(id) as id, DATE(created_at) as revenue_date, SUM(grand_total) as gross_revenue, 'POS System' as source, '-' as batch_id FROM bills WHERE status IN ('completed', 'printed')";
+
     const params: any[] = [];
     let paramIndex = 1;
 
-    if (startDate) {
-      query += ` AND revenue_date >= $${paramIndex++}`;
-      params.push(startDate);
-    }
-    if (endDate) {
-      query += ` AND revenue_date <= $${paramIndex++}`;
-      params.push(endDate);
+    let ledgerConditions = '';
+    let billsConditions = '';
+
+    if (hotelId && hotelId !== 'all') {
+      ledgerConditions += ` AND hotel_id = $${paramIndex}`;
+      // bills does not have hotel_id yet, but we will ignore it or you can add it if needed.
+      params.push(hotelId);
+      paramIndex++;
     }
 
-    query += ' ORDER BY revenue_date DESC';
+    if (startDate) {
+      ledgerConditions += ` AND revenue_date >= $${paramIndex}`;
+      billsConditions += ` AND DATE(created_at) >= $${paramIndex}`;
+      params.push(startDate);
+      paramIndex++;
+    }
+    if (endDate) {
+      ledgerConditions += ` AND revenue_date <= $${paramIndex}`;
+      billsConditions += ` AND DATE(created_at) <= $${paramIndex}`;
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    billsQuery += billsConditions + ' GROUP BY DATE(created_at)';
+    ledgerQuery += ledgerConditions;
+
+    const query = `
+      SELECT * FROM (
+        ${ledgerQuery}
+        UNION ALL
+        ${billsQuery}
+      ) as combined
+      ORDER BY revenue_date DESC
+    `;
+
     const result = await pool.query(query, params);
 
     const formattedRevenue = result.rows.map(row => ({
@@ -322,8 +357,21 @@ export const getRevenue = async (req: Request, res: Response) => {
     }));
 
     // Generate basic summary metrics
-    const currentMonthResult = await pool.query(`SELECT SUM(gross_revenue) as total FROM revenue_ledger WHERE date_trunc('month', revenue_date) = date_trunc('month', current_date)`);
-    const ytdResult = await pool.query(`SELECT SUM(gross_revenue) as total FROM revenue_ledger WHERE date_trunc('year', revenue_date) = date_trunc('year', current_date)`);
+    const currentMonthResult = await pool.query(`
+      SELECT SUM(gross_revenue) as total FROM (
+        SELECT gross_revenue FROM revenue_ledger WHERE date_trunc('month', revenue_date) = date_trunc('month', current_date) ${hotelId && hotelId !== 'all' ? 'AND hotel_id = $1' : ''}
+        UNION ALL
+        SELECT grand_total as gross_revenue FROM bills WHERE status IN ('completed', 'printed') AND date_trunc('month', created_at) = date_trunc('month', current_date)
+      ) as combined
+    `, hotelId && hotelId !== 'all' ? [hotelId] : []);
+
+    const ytdResult = await pool.query(`
+      SELECT SUM(gross_revenue) as total FROM (
+        SELECT gross_revenue FROM revenue_ledger WHERE date_trunc('year', revenue_date) = date_trunc('year', current_date) ${hotelId && hotelId !== 'all' ? 'AND hotel_id = $1' : ''}
+        UNION ALL
+        SELECT grand_total as gross_revenue FROM bills WHERE status IN ('completed', 'printed') AND date_trunc('year', created_at) = date_trunc('year', current_date)
+      ) as combined
+    `, hotelId && hotelId !== 'all' ? [hotelId] : []);
 
     res.json({
       revenues: formattedRevenue,
@@ -345,8 +393,8 @@ export const getRevenue = async (req: Request, res: Response) => {
 export const getPnLAnalytics = async (req: Request, res: Response) => {
   try {
     const userRole = req.headers['x-user-role'] as string;
-    // Assume Hotel Admin or ADMIN are allowed
-    if (userRole !== 'Hotel Admin' && userRole !== 'ADMIN') {
+    // Assume Hotel Admin, ADMIN, or superadmin are allowed
+    if (userRole !== 'Hotel Admin' && userRole !== 'ADMIN' && userRole !== 'superadmin') {
       return res.status(403).json({ error: 'Access denied' });
     }
 
@@ -382,20 +430,38 @@ export const getPnLAnalytics = async (req: Request, res: Response) => {
     const endStr = endDate.toISOString().split('T')[0];
 
     // Get revenue
-    const revenueResult = await pool.query(`
+    const hotelId = req.headers['x-hotel-id'] as string;
+    const revenueParams: any[] = [startStr, endStr];
+    let revenueQuery = `
       SELECT COALESCE(SUM(gross_revenue), 0) as total 
-      FROM revenue_ledger 
-      WHERE revenue_date >= $1 AND revenue_date <= $2
-    `, [startStr, endStr]);
+      FROM (
+        SELECT gross_revenue FROM revenue_ledger WHERE revenue_date >= $1 AND revenue_date <= $2 ${hotelId && hotelId !== 'all' ? 'AND hotel_id = $3' : ''}
+        UNION ALL
+        SELECT grand_total as gross_revenue FROM bills WHERE status IN ('completed', 'printed') AND DATE(created_at) >= $1 AND DATE(created_at) <= $2
+      ) as combined
+    `;
+    
+    if (hotelId && hotelId !== 'all') {
+      revenueParams.push(hotelId);
+    }
+    
+    const revenueResult = await pool.query(revenueQuery, revenueParams);
     const grossRevenue = Number(revenueResult.rows[0].total);
 
     // Get expenses
-    const expensesResult = await pool.query(`
+    const expensesParams: any[] = [startStr, endStr];
+    let expensesQuery = `
       SELECT expense_type, COALESCE(SUM(amount), 0) as total 
       FROM expenses 
       WHERE expense_date >= $1 AND expense_date <= $2
-      GROUP BY expense_type
-    `, [startStr, endStr]);
+    `;
+    if (hotelId && hotelId !== 'all') {
+      expensesQuery += ` AND hotel_id = $3`;
+      expensesParams.push(hotelId);
+    }
+    expensesQuery += ` GROUP BY expense_type`;
+
+    const expensesResult = await pool.query(expensesQuery, expensesParams);
 
     let purchaseExpenses = 0;
     let fixedExpenses = 0;
@@ -600,51 +666,78 @@ export const generateReport = async (req: Request, res: Response) => {
   try {
     const userRole = req.headers['x-user-role'] as string;
     // Assume Hotel Admin or ADMIN are allowed
-    if (userRole !== 'Hotel Admin' && userRole !== 'ADMIN') {
+    // Assume Hotel Admin, ADMIN, or superadmin are allowed
+    if (userRole !== 'Hotel Admin' && userRole !== 'ADMIN' && userRole !== 'superadmin') {
       return res.status(403).json({ error: 'Access denied: Only Hotel Admin can export reports' });
     }
 
-    const { reportType, format, customStart, customEnd } = req.query; // reportType e.g., 'Daily', 'Monthly', 'Custom'
-    const reportFormat = (format as string)?.toUpperCase() || 'XLSX';
+    const { reportType, format, customStart, customEnd } = req.query; // reportType e.g., 'pnl', 'expenses', 'inventory', 'audit', 'requests'
+    const hotelId = req.headers['x-hotel-id'] as string;
 
-    // Validate Custom Range
-    if (reportType === 'Custom') {
-      const start = customStart ? new Date(customStart as string) : new Date();
-      const end = customEnd ? new Date(customEnd as string) : new Date();
-      const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays > 366) {
-        return res.status(400).json({ error: 'Range exceeds max 366 days' });
-      }
-    }
-
-    // In a real system, we'd enqueue a job and return 202 Accepted.
-    // For this simulation, we generate immediately and return a mock "signed URL".
-    
-    // Write Audit Log for Report Exported
-    const mockSignedUrl = `https://storage.restomanager.com/exports/report_${Date.now()}.${reportFormat.toLowerCase()}`;
     const client = await pool.connect();
+    let csvData = '';
+
     try {
+      if (reportType === 'pnl' || reportType === 'expenses') {
+        let query = 'SELECT expense_date, expense_type, category, amount, payment_method, vendor, description FROM expenses WHERE 1=1';
+        const params: any[] = [];
+        if (hotelId && hotelId !== 'all') {
+           query += ' AND hotel_id = $1';
+           params.push(hotelId);
+        }
+        query += ' ORDER BY expense_date DESC';
+        const result = await client.query(query, params);
+        csvData = 'Date,Type,Category,Amount,Payment Method,Vendor,Description\n';
+        result.rows.forEach(row => {
+          csvData += `${new Date(row.expense_date).toISOString().split('T')[0]},${row.expense_type},${row.category || ''},${row.amount},${row.payment_method || ''},"${(row.vendor || '').replace(/"/g, '""')}","${(row.description || '').replace(/"/g, '""')}"\n`;
+        });
+      } else if (reportType === 'inventory') {
+        let query = 'SELECT invoice_number, vendor_name, total_amount, payment_status, created_at FROM stock_entries WHERE 1=1';
+        const params: any[] = [];
+        if (hotelId && hotelId !== 'all') {
+           query += ' AND hotel_id = $1';
+           params.push(hotelId);
+        }
+        query += ' ORDER BY created_at DESC';
+        const result = await client.query(query, params);
+        csvData = 'Date,Invoice Number,Vendor Name,Total Amount,Payment Status\n';
+        result.rows.forEach(row => {
+          csvData += `${new Date(row.created_at).toISOString().split('T')[0]},"${(row.invoice_number || '').replace(/"/g, '""')}","${(row.vendor_name || '').replace(/"/g, '""')}",${row.total_amount},${row.payment_status || ''}\n`;
+        });
+      } else if (reportType === 'audit') {
+         const result = await client.query('SELECT created_at, action, entity_type, reason FROM audit_log ORDER BY created_at DESC');
+         csvData = 'Date,Action,Entity,Reason\n';
+         result.rows.forEach(row => {
+           csvData += `${new Date(row.created_at).toISOString()},${row.action},${row.entity_type},"${(row.reason || '').replace(/"/g, '""')}"\n`;
+         });
+      } else if (reportType === 'requests') {
+         // Query stock_requests if it exists, otherwise return a placeholder
+         try {
+           const result = await client.query('SELECT id, user_id, status, created_at FROM stock_requests ORDER BY created_at DESC');
+           csvData = 'Date,Request ID,User ID,Status\n';
+           result.rows.forEach(row => {
+             csvData += `${new Date(row.created_at).toISOString().split('T')[0]},${row.id},${row.user_id},${row.status}\n`;
+           });
+         } catch (e) {
+           csvData = 'Date,Request ID,User ID,Status\n';
+         }
+      } else {
+        csvData = 'Report Type,Not Supported\n' + reportType;
+      }
+      
+      // Write Audit Log for Report Exported
       await client.query(`
         INSERT INTO audit_log (action, entity_type, reason, metadata)
-        VALUES ('REPORT_EXPORTED', 'report', 'Admin requested report export', $1)
-      `, [JSON.stringify({ 
-        reportType, 
-        dateRange: reportType === 'Custom' ? `${customStart} to ${customEnd}` : reportType, 
-        format: reportFormat, 
-        signedUrl: mockSignedUrl 
-      })]);
+        VALUES ('REPORT_EXPORTED', 'report', 'Admin exported CSV report', $1)
+      `, [JSON.stringify({ reportType, dateRange: reportType === 'Custom' ? `${customStart} to ${customEnd}` : reportType, format: 'CSV' })]);
+
     } finally {
       client.release();
     }
 
-    // Send the simulated Async Job Response
-    res.status(202).json({
-      message: 'Preparing report... You will receive an in-app notification when the file is ready.',
-      jobId: `job_${Date.now()}`,
-      status: 'QUEUED',
-      // We return the URL here just so the frontend can mock the "download" link click
-      downloadUrl: mockSignedUrl
-    });
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=${reportType}_report.csv`);
+    return res.status(200).send(csvData);
 
   } catch (error: any) {
     console.error('Error generating report:', error);
