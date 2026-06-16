@@ -1,0 +1,29 @@
+{
+  "name": "hotel-management-api",
+  "version": "1.0.0",
+  "description": "Hotel Management API Server",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "ts-node -r dotenv/config src/main.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "cors": "^2.8.6",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "multer": "^2.1.1",
+    "pg": "^8.16.3",
+    "tesseract.js": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/node": "^20.19.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
