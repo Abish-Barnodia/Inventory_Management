@@ -638,6 +638,14 @@ export async function initializeDatabase(): Promise<void> {
   `);
 
   await pool.query(`
+    ALTER TABLE hotels
+      ADD COLUMN IF NOT EXISTS timezone VARCHAR DEFAULT 'Asia/Kolkata',
+      ADD COLUMN IF NOT EXISTS currency VARCHAR DEFAULT 'INR — Indian Rupee',
+      ADD COLUMN IF NOT EXISTS logo_url TEXT;
+  `);
+
+
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS hotel_profile (
       id SERIAL PRIMARY KEY,
       name VARCHAR NOT NULL DEFAULT 'Grand View Hotel',
