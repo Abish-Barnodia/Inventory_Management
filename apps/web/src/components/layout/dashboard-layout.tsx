@@ -58,6 +58,9 @@ function DateTimeFilter() {
         <span>{displayDate}</span>
         <input
           ref={dateInputRef}
+          id="global-filter-date"
+          name="globalFilterDate"
+          aria-label="Select Date"
           type="date"
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
@@ -73,6 +76,9 @@ function DateTimeFilter() {
         <span>{displayTime}</span>
         <input
           ref={timeInputRef}
+          id="global-filter-time"
+          name="globalFilterTime"
+          aria-label="Select Time"
           type="time"
           value={filterTime}
           onChange={(e) => setFilterTime(e.target.value)}
@@ -147,6 +153,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <button 
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-md"
+                aria-label="Open sidebar"
+                title="Open sidebar"
               >
                 <Menu size={20} />
               </button>
